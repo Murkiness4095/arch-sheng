@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = *
+
+[Action]
+Description = Checking that the sheng update repository is enabled...
+When = PreTransaction
+AbortOnFail
+Exec = /usr/bin/sheng-repo check

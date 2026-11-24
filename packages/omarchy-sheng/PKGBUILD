@@ -1,20 +1,23 @@
 pkgname=omarchy-sheng
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='U-Boot extlinux update integration for Omarchy on Xiaomi Pad 6S Pro'
 arch=(any)
 url=https://github.com/Murkiness4095/omarchy-sheng
 license=(MIT)
 depends=(gawk bash coreutils grep kmod mkinitcpio pacman util-linux)
-source=(sheng-boot sheng-repo mkinitcpio-sheng.conf 90-sheng-kernel.hook pre-refresh-sheng sheng-init-keyring sheng-keyring.service)
-sha256sums=(a28cb1f86678c8438c86b11bf788e03cd3989710a39a6112561fc45c19dd11c2 ee30d791d4e4891007864bcc9d4ad07815410a707a740218a013f9fc72a6edb7 3f51994ef851e4a09e7c463332c3847a0eb264a1e78d9acc6dbb864b52d3586e c8d43936cfbf5744bf13e15ab300346c5b589210adc0282e5ffe14a030f22c69 4644bc1bac7cbf50d67c4a5ca76a7d065c32c404508f572abcaf651dfe2e3322 f5078b6c61dc3d830de8eb1fa48a866db82b99603e1859c7f9831a91332bfa50 bbf4cb25f3073aff5a9ea15ac074653e65fced207faa47433cec152b983ad464)
+source=(40-sheng-repository.hook sheng-boot sheng-repo mkinitcpio-sheng.conf 90-sheng-kernel.hook pre-refresh-sheng sheng-init-keyring sheng-keyring.service sheng-module-retention.conf)
+sha256sums=(38d1275a9e10a04856ec1f50d2ee7e16bf583e74e5dc1ba57608022167058a25 a28cb1f86678c8438c86b11bf788e03cd3989710a39a6112561fc45c19dd11c2 879a0a7a26a5c13013ec3ec159354619b4d07a16cf01cc00757cf367a481102d 3f51994ef851e4a09e7c463332c3847a0eb264a1e78d9acc6dbb864b52d3586e c8d43936cfbf5744bf13e15ab300346c5b589210adc0282e5ffe14a030f22c69 4644bc1bac7cbf50d67c4a5ca76a7d065c32c404508f572abcaf651dfe2e3322 f5078b6c61dc3d830de8eb1fa48a866db82b99603e1859c7f9831a91332bfa50 bbf4cb25f3073aff5a9ea15ac074653e65fced207faa47433cec152b983ad464 dfffc463f65e1b821d7b7dc9f43781bd90e7abe2996de1f504980f69ee7e9a71)
 
 package() {
   install -Dm755 sheng-boot "$pkgdir/usr/bin/sheng-boot"
   install -Dm755 sheng-repo "$pkgdir/usr/bin/sheng-repo"
   install -Dm644 mkinitcpio-sheng.conf "$pkgdir/usr/share/sheng/mkinitcpio.conf"
   install -Dm644 90-sheng-kernel.hook "$pkgdir/usr/share/libalpm/hooks/90-sheng-kernel.hook"
+  install -Dm644 40-sheng-repository.hook "$pkgdir/usr/share/libalpm/hooks/40-sheng-repository.hook"
   install -Dm644 pre-refresh-sheng "$pkgdir/usr/share/sheng/pre-refresh-sheng"
   install -Dm755 sheng-init-keyring "$pkgdir/usr/lib/sheng/init-keyring"
   install -Dm644 sheng-keyring.service "$pkgdir/usr/lib/systemd/system/sheng-keyring.service"
+  install -Dm644 sheng-module-retention.conf \
+    "$pkgdir/usr/lib/systemd/system/linux-modules-cleanup.service.d/sheng.conf"
 }

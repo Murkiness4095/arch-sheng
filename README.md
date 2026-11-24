@@ -20,7 +20,7 @@
 
 Omarchy 的 `omarchy update` 通过 pacman 安装 `linux-sheng`。ALPM 钩子为这个版本安装模块、生成 initramfs，并切换 extlinux 启动项。下次重启可用平板按键选择当前内核或上一套内核。确认图形、触摸和网络后运行 `sudo sheng-boot confirm`。如果启动项生成失败，可运行 `sudo sheng-boot install` 重试。该机制回退的是内核和启动文件，用户空间仍是 pacman 已升级的状态。
 
-Omarchy 刷新渠道配置时会调用 `pre-refresh-pacman`。镜像为首个用户预置钩子，恢复 `sheng` 的仓库配置。手工替换 `/etc/pacman.conf` 后，可用 `sudo sheng-repo` 恢复。
+Omarchy 刷新渠道配置时会调用 `pre-refresh-pacman`。镜像为首个用户预置钩子，恢复 `sheng` 的仓库配置。手工替换 `/etc/pacman.conf` 后，可用 `sudo sheng-repo` 恢复。仓库配置缺失时，pacman 会中止升级并提示如何恢复。
 
 ## 真机验证
 

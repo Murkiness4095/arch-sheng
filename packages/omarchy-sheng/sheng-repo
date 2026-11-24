@@ -1,6 +1,13 @@
 #!/usr/bin/bash
 set -euo pipefail
 
+if [[ ${1:-} == check && $# == 1 ]]; then
+  if pacman-conf --repo-list | grep -Fx sheng >/dev/null; then
+    exit 0
+  fi
+  echo 'The sheng repository is missing from pacman.conf. Run sudo sheng-repo before updating.' >&2
+  exit 1
+fi
 [[ $# == 0 && $EUID == 0 ]] || { echo 'usage: sudo sheng-repo' >&2; exit 1; }
 repo=/etc/pacman.d/sheng.conf
 config=/etc/pacman.conf
