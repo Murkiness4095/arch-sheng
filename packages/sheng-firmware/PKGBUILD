@@ -1,0 +1,17 @@
+pkgname=sheng-firmware
+pkgver=20261113
+pkgrel=1
+pkgdesc='Locally built device firmware overlay for Xiaomi Pad 6S Pro'
+arch=(any)
+url=https://github.com/ianchb/sheng-firmware
+license=(LicenseRef-Vendor)
+_commit=053da477a5c338ac28d7c1c869e8c3ff7ca24d11
+source=("sheng-firmware-$_commit.tar.gz::https://codeload.github.com/ianchb/sheng-firmware/tar.gz/$_commit")
+sha256sums=(89d297041dccb37cd5d3c992dd0e5e75b12cdb6c6753d4b21f789dd21eb59dbe)
+
+package() {
+  # Use the kernel's firmware override search path to coexist with
+  # upstream linux-firmware packages that have some of the same names.
+  install -d "$pkgdir/usr/lib/firmware/updates"
+  cp -a "sheng-firmware-$_commit/." "$pkgdir/usr/lib/firmware/updates/"
+}

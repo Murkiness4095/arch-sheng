@@ -1,0 +1,59 @@
+# Device kernel for the Xiaomi Pad 6S Pro.
+pkgname=linux-sheng
+pkgver=7.3.4
+pkgrel=1
+pkgdesc='Linux kernel, modules and device tree for Xiaomi Pad 6S Pro'
+arch=(aarch64)
+url=https://github.com/ianchb/sm8550-mainline
+license=(GPL-2.0-only)
+makedepends=(bc bison flex gettext kmod libelf openssl pahole perl python zstd)
+depends=(omarchy-sheng)
+options=(!strip !debug)
+_commit=87ac0f2347eb433933841e6854950dd90e96e6b2
+_config_commit=a93aaa1eff77a2bf0552b8dafaa35c1e0880317f
+_src="sm8550-mainline-$_commit"
+source=(
+  "$_src.tar.gz::https://codeload.github.com/ianchb/sm8550-mainline/tar.gz/$_commit"
+  "sm8550-$_config_commit.config::https://raw.githubusercontent.com/ianchb/debian-sheng/$_config_commit/sm8550.config"
+)
+sha256sums=(
+  a445dac4b623931bc35474b507afdadc7d6d4493253e9a8741dc22154665a615
+  cdb60fdfa86c8a16f0d146c961c8acf81be0a5d371e4c46c75526af055b92482
+)
+
+prepare() {
+  cd "$_src"
+  cp "../sm8550-$_config_commit.config" .config
+  scripts/config --set-str LOCALVERSION "-sheng.$pkgrel" --disable LOCALVERSION_AUTO \
+    --enable GPIO_SHARED_PROXY --enable TYPEC_MUX_PS5169 \
+    --enable FW_LOADER_COMPRESS --enable FW_LOADER_COMPRESS_ZSTD \
+    --enable DEBUG_INFO_NONE --disable DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT
+  # Match the source version without Git or distribution flags in the ABI.
+  make ARCH=arm64 LOCALVERSION= olddefconfig
+  local option
+  for option in GPIO_SHARED_PROXY TYPEC_MUX_PS5169 SCSI_UFS_QCOM EXT4_FS BLK_DEV_INITRD RD_ZSTD; do
+    grep -qx "CONFIG_$option=y" .config || return 1
+  done
+}
+
+build() {
+  cd "$_src"
+  make ARCH=arm64 LOCALVERSION= Image modules qcom/sm8550-xiaomi-sheng.dtb
+}
+
+package() {
+  cd "$_src"
+  local release payload
+  release=$(make -s ARCH=arm64 LOCALVERSION= kernelrelease)
+  [[ $release == "$pkgver-sheng.$pkgrel" ]] || return 1
+  payload="$pkgdir/usr/lib/sheng-kernel"
+  install -Dm644 arch/arm64/boot/Image "$payload/Image"
+  install -Dm644 arch/arm64/boot/dts/qcom/sm8550-xiaomi-sheng.dtb "$payload/sheng.dtb"
+  printf '%s\n' "$release" > "$payload/release"
+  # Publish the payload outside /usr/lib/modules. The boot installer owns
+  # the live module trees so removal by pacman cannot break the fallback.
+  make ARCH=arm64 LOCALVERSION= INSTALL_MOD_PATH="$srcdir/modinstall" \
+    INSTALL_MOD_STRIP=1 DEPMOD=true modules_install
+  rm -f "$srcdir/modinstall/lib/modules/$release/build" "$srcdir/modinstall/lib/modules/$release/source"
+  cp -a "$srcdir/modinstall/lib/modules/$release" "$payload/modules"
+}

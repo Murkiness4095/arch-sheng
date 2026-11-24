@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+[[ $# == 0 && $EUID == 0 ]] || { echo 'usage: sudo sheng-repo' >&2; exit 1; }
+repo=/etc/pacman.d/sheng.conf
+config=/etc/pacman.conf
+include="Include = $repo"
+[[ -s $repo ]] || { echo "Missing $repo" >&2; exit 1; }
+
+exec 9>/run/lock/sheng-repo.lock
+flock 9
+if grep -Fxq "$include" "$config"; then
+  exit
+fi
+tmp=$(mktemp /etc/.pacman-sheng.XXXXXXXX)
+trap 'rm -f -- "$tmp"' EXIT
+cp --preserve=mode,ownership "$config" "$tmp"
+printf '\n%s\n' "$include" >> "$tmp"
+mv -f "$tmp" "$config"

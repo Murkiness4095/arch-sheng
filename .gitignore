@@ -1,0 +1,7 @@
+/packages/*/src/
+/packages/*/pkg/
+/packages/*/*.tar.gz
+/packages/*/*.pkg.tar.*
+/build/
+/dist/
+/.sheng-image.*/

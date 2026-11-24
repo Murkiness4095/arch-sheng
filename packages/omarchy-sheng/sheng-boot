@@ -1,0 +1,150 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+die() { echo "sheng-boot: $*" >&2; exit 1; }
+
+valid_release() { [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+-sheng\.[0-9]+([.][0-9]+)*$ ]]; }
+
+boot=/boot
+payload=/usr/lib/sheng-kernel
+modules=/usr/lib/modules
+state=/var/lib/sheng
+config=$boot/extlinux/extlinux.conf
+generations=$boot/sheng
+
+(( EUID == 0 )) || die 'run as root'
+mkdir -p /run/lock "$state"
+exec 9>/run/lock/sheng-boot.lock
+flock 9
+
+release_from_entry() {
+  awk -v label="$1" '
+    $1 == "LABEL" { entry = $2 }
+    entry == label && $1 == "LINUX" {
+      split($2, path, "/")
+      if (path[1] == ".." && path[2] == "sheng" && path[4] == "Image") print path[3]
+      exit
+    }
+  ' "$config"
+}
+
+if [[ ${1:-} == confirm && $# == 1 ]]; then
+  running=$(uname -r)
+  valid_release "$running" || die 'the running kernel is not a sheng package build'
+  [[ $running == "$(release_from_entry current)" ]] || die 'boot the current entry before confirming it'
+  printf '%s\n' "$running" > "$state/.confirmed"
+  mv -f "$state/.confirmed" "$state/confirmed"
+  exit
+fi
+[[ ${1:-} == install && $# == 1 ]] || die 'usage: sheng-boot install|confirm'
+
+[[ -r /etc/sheng/partlabel ]] || die 'configure /etc/sheng/partlabel first'
+partlabel=$(< /etc/sheng/partlabel)
+[[ $partlabel == linux || $partlabel == userdata ]] || die 'expected linux or userdata'
+mkdir -p "$generations" "${config%/*}" "$modules"
+[[ $(findmnt -n -o FSTYPE -T "$boot") == ext4 ]] || die '/boot must be on ext4'
+[[ $(findmnt -n -o TARGET -T "$generations") == / ]] || die '/boot/sheng must be on the root filesystem'
+[[ $(findmnt -n -o TARGET -T "${config%/*}") == / ]] || die 'extlinux must be on the root filesystem'
+
+release=$(< "$payload/release")
+valid_release "$release" || die "invalid release $release"
+previous=
+if [[ -e $config ]]; then
+  current=$(release_from_entry current)
+  previous=$(release_from_entry previous)
+  confirmed=
+  [[ ! -f $state/confirmed ]] || confirmed=$(< "$state/confirmed")
+  if [[ $current != "$release" && ( $current == "$confirmed" || -z $previous ) ]]; then
+    previous=$current
+  fi
+fi
+if [[ -n $previous ]]; then
+  valid_release "$previous" || die "invalid fallback release $previous"
+  if [[ $previous == "$release" ]]; then
+    previous=
+  fi
+fi
+if [[ -n $previous ]]; then
+  for file in Image sheng.dtb initramfs.img; do
+    [[ -s $generations/$previous/$file ]] || die "missing fallback $file for $previous"
+  done
+  [[ -s $modules/$previous/modules.dep ]] || die "missing fallback modules for $previous"
+fi
+
+stage=$(mktemp -d "$generations/.stage.XXXXXXXX")
+module_stage=
+conf_tmp=
+menu_tmp=
+cleanup() {
+  rm -rf -- "$stage"
+  [[ -z $module_stage ]] || rm -rf -- "$module_stage"
+  [[ -z $conf_tmp ]] || rm -f -- "$conf_tmp"
+  [[ -z $menu_tmp ]] || rm -f -- "$menu_tmp"
+}
+trap cleanup EXIT
+
+if [[ ! -e $modules/$release ]]; then
+  module_stage=$(mktemp -d "$modules/.sheng.XXXXXXXX")
+  mkdir -p "$module_stage/usr/lib/modules"
+  ln -s usr/lib "$module_stage/lib"
+  cp -a --reflink=auto "$payload/modules" "$module_stage/usr/lib/modules/$release"
+  depmod -b "$module_stage" "$release"
+  mv -T "$module_stage/usr/lib/modules/$release" "$modules/$release"
+fi
+[[ -s $modules/$release/modules.dep ]] || die "missing module dependencies for $release"
+
+if [[ ! -e $generations/$release ]]; then
+  install -m644 "$payload/Image" "$payload/sheng.dtb" "$stage/"
+  mkinitcpio -k "$release" -c /usr/share/sheng/mkinitcpio.conf -g "$stage/initramfs.img"
+  [[ -s $stage/initramfs.img ]] || die "empty initramfs for $release"
+  chmod 755 "$stage"
+  mv -T "$stage" "$generations/$release"
+fi
+for file in Image sheng.dtb initramfs.img; do
+  [[ -s $generations/$release/$file ]] || die "missing $file for $release"
+done
+
+entry() {
+  local label=$1 version=$2
+  printf '\nLABEL %s\n' "$label"
+  printf '  LINUX ../sheng/%s/Image\n' "$version"
+  printf '  FDT ../sheng/%s/sheng.dtb\n' "$version"
+  printf '  INITRD ../sheng/%s/initramfs.img\n' "$version"
+  printf '  APPEND root=PARTLABEL=%s rootfstype=ext4 rw rootwait console=tty0 fbcon=map:0\n' "$partlabel"
+}
+
+conf_tmp=$(mktemp "${config%/*}/.extlinux.XXXXXXXX")
+{
+  printf 'DEFAULT current\nPROMPT 0\nTIMEOUT 1\n'
+  entry current "$release"
+  if [[ -n $previous ]]; then
+    entry previous "$previous"
+  fi
+} > "$conf_tmp"
+menu_tmp=$(mktemp "$boot/.sheng-menu.XXXXXXXX")
+{
+  printf 'bootmenu_0=Omarchy %s=setenv pxe_label_override; run bootlinux\n' "$release"
+  if [[ -n $previous ]]; then
+    printf 'bootmenu_1=Omarchy fallback %s=setenv pxe_label_override previous; run bootlinux\n' "$previous"
+    printf 'bootmenu_2=Reboot to fastboot=run rebootfastboot\n'
+  else
+    printf 'bootmenu_1=Reboot to fastboot=run rebootfastboot\n'
+  fi
+} > "$menu_tmp"
+chmod 644 "$conf_tmp" "$menu_tmp"
+sync -f "$modules/$release"
+sync -f "$boot"
+mv -f "$conf_tmp" "$config"
+mv -f "$menu_tmp" "$boot/sheng-bootmenu.env"
+sync -f "$boot"
+
+# Keep the running release until reboot even if an intervening upgrade
+# displaced it from both boot entries.
+running=$(uname -r)
+for directory in "$generations"/*-sheng.* "$modules"/*-sheng.*; do
+  [[ -d $directory ]] || continue
+  old=${directory##*/}
+  valid_release "$old" || continue
+  [[ $old != "$release" && $old != "$previous" && $old != "$running" ]] || continue
+  rm -rf -- "$directory"
+done

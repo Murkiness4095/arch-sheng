@@ -1,0 +1,96 @@
+#!/usr/bin/bash
+set -euo pipefail
+cd /work
+repo=${SHENG_REPO_URL:-file:///var/cache/sheng/repo}
+export SHENG_BUILD_REPO=/work/dist/packages
+partlabel=${SHENG_PARTLABEL:-linux}
+iso_url=https://iso.omarchy.org/omarchy-4.5.0-aarch64.iso
+iso_hash=c9a9dd1107c10924eeb1e885226f9884080b1ffbf227d1f7f9ad255e4cebfb17
+builder_ref=e5120c67cdb7662dd4e7cd4369561b0da52365fa
+
+pacman-key --init
+pacman-key --populate archlinuxarm
+printf 'Server = https://arm-stable-mirror.omarchy.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
+pacman --noconfirm --disable-sandbox -Syu --needed arch-install-scripts btrfs-progs curl e2fsprogs gnupg rsync xorriso zstd
+
+work=$(mktemp -d /work/.sheng-image.XXXXXXXX)
+source_root=$work/source
+mkdir "$source_root"
+cleanup() {
+  if mountpoint -q "$source_root"; then
+    umount "$source_root" || return
+  fi
+  rm -rf -- "$work"
+}
+trap cleanup EXIT
+curl -fL --retry 3 "$iso_url" -o "$work/omarchy.iso"
+printf '%s  %s\n' "$iso_hash" "$work/omarchy.iso" | sha256sum -c -
+xorriso -osirrox on -indev "$work/omarchy.iso" \
+  -extract /arch/aarch64/omarchy-root.img.zst "$work/root.img.zst"
+rm "$work/omarchy.iso"
+zstd -d --sparse --rm "$work/root.img.zst" -o "$work/root.img"
+mount -o loop,subvol=omarchy-root "$work/root.img" "$source_root"
+
+arch_root() { arch-chroot "$source_root" "$@"; }
+omarchy=$source_root/usr/share/omarchy
+for file in pacman.conf mirrorlist; do
+  template=$file
+  dest=$source_root/etc/pacman.d/$file
+  if [[ $file == pacman.conf ]]; then
+    template=pacman-stable.conf
+    dest=$source_root/etc/$file
+  else
+    template=mirrorlist-stable
+  fi
+  install -m644 "$omarchy/default/pacman/aarch64/$template" "$dest"
+done
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/omacom/omarchy-iso/$builder_ref/builder/omarchy.gpg" \
+  -o "$source_root/tmp/omarchy.gpg"
+arch_root pacman-key --init
+arch_root pacman-key --populate archlinuxarm omarchy
+arch_root pacman-key --add /tmp/omarchy.gpg
+arch_root pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
+
+install -d "$source_root/etc/pacman.d/hooks"
+ln -sfn /dev/null "$source_root/etc/pacman.d/hooks/90-mkinitcpio-install.hook"
+# Chroot transactions need the same sandbox bypass the upstream ISO builder uses.
+install -d "$source_root/usr/local/bin"
+printf '#!/bin/sh\nexec /usr/bin/pacman --disable-sandbox "$@"\n' > "$source_root/usr/local/bin/pacman"
+chmod 755 "$source_root/usr/local/bin/pacman"
+arch_root env PATH=/usr/local/bin:/usr/bin OMARCHY_MIRROR=stable MISE_OFFLINE=1 \
+  /usr/bin/omarchy-apply-system --defer-provisioning --first-install
+rm "$source_root/usr/local/bin/pacman"
+
+install -Dm644 "$omarchy/install/provisioning/omarchy-provision-owner.service" \
+  "$source_root/etc/systemd/system/omarchy-provision-owner.service"
+install -d "$source_root/var/lib/omarchy/provisioning"
+touch "$source_root/var/lib/omarchy/provisioning/pending"
+chroot "$source_root" systemctl enable omarchy-provision-owner.service
+# The image uses ext4. Its fallback is supplied by U-Boot.
+chroot "$source_root" systemctl disable snapper-cleanup.timer limine-snapper-sync.service
+rm -f "$source_root/etc/snapper/configs/root" "$source_root/etc/conf.d/snapper"
+# Ensure fstab exists for the conversion step even if the official seed omitted it.
+touch "$source_root/etc/fstab"
+
+firmware=-
+if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
+  pacman --noconfirm --disable-sandbox -S --needed base-devel
+  useradd -m builder
+  cp -r packages/sheng-firmware "$work/firmware"
+  chmod 755 "$work"
+  chown -R builder:builder "$work/firmware"
+  (
+    cd "$work/firmware"
+    runuser -u builder -- makepkg --noconfirm
+  )
+  archives=("$work/firmware/"*.pkg.tar.zst)
+  firmware=${archives[0]}
+fi
+
+fingerprint=$(< "$SHENG_BUILD_REPO/sheng.fingerprint")
+install -d dist/image
+scripts/build-rootfs-image "$source_root" "$work/sheng-root.img" 20G - "$partlabel" \
+  "$repo" "$SHENG_BUILD_REPO/sheng.asc" "$fingerprint" "$firmware"
+zstd -T0 -6 --rm "$work/sheng-root.img" -o "dist/image/rootfs-$partlabel.img.zst"
+(cd dist/image && sha256sum ./*.img.zst > SHA256SUMS)
+chown -R "$BUILD_UID:$BUILD_GID" dist/image

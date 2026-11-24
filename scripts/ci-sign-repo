@@ -1,0 +1,28 @@
+#!/usr/bin/bash
+set -euo pipefail
+cd /work/dist/packages
+export GNUPGHOME
+GNUPGHOME=$(mktemp -d)
+trap 'gpgconf --kill all; rm -rf -- "$GNUPGHOME"' EXIT
+if [[ -n ${SHENG_SIGNING_KEY:-} ]]; then
+  printf '%s' "$SHENG_SIGNING_KEY" | gpg --batch --import
+else
+  gpg --batch --passphrase '' --quick-generate-key 'Omarchy Sheng CI preview' ed25519 sign 0
+fi
+unset SHENG_SIGNING_KEY
+fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1=="sec"{p=1} $1=="fpr"&&p{print $10;p=0}')
+[[ $fingerprint =~ ^[A-F0-9]{40}$ ]]
+printf '%s\n' "$fingerprint" > sheng.fingerprint
+gpg --batch --armor --export "$fingerprint" > sheng.asc
+for archive in *.pkg.tar.zst; do
+  gpg --batch --yes --local-user "$fingerprint" --detach-sign "$archive"
+done
+repo-add --sign --key "$fingerprint" sheng.db.tar.gz ./*.pkg.tar.zst
+# Artifact upload transports ordinary files. Preserve pacman's conventional aliases.
+for alias in sheng.db sheng.db.sig sheng.files sheng.files.sig; do
+  if [[ -L $alias ]]; then
+    cp --dereference "$alias" "$alias.copy"
+    mv -f "$alias.copy" "$alias"
+  fi
+done
+chown -R "$BUILD_UID:$BUILD_GID" /work/dist/packages

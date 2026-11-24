@@ -1,0 +1,26 @@
+#!/usr/bin/bash
+set -euo pipefail
+cd /work
+pacman-key --init
+pacman-key --populate archlinuxarm
+printf 'Server = https://arm-stable-mirror.omarchy.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
+pacman --noconfirm --disable-sandbox -Syu --needed base-devel bc bison flex gettext kmod libelf \
+  openssl pahole perl python zstd meson ninja pkgconf protobuf glib2 libqmi protobuf-c
+useradd -m builder
+stage=$(mktemp -d /tmp/sheng-build.XXXXXXXX)
+cp -r packages/. "$stage/"
+chown -R builder:builder "$stage"
+dest=/work/dist/packages
+install -d "$dest"
+
+for package in omarchy-sheng linux-sheng libssc xiaomi-sheng-thp; do
+  (
+    cd "$stage/$package"
+    runuser -u builder -- env MAKEFLAGS="-j$(nproc)" makepkg --noconfirm --nodeps
+    cp -- ./*.pkg.tar.zst "$dest/"
+    if [[ $package == libssc ]]; then
+      pacman --noconfirm --disable-sandbox -U ./*.pkg.tar.zst
+    fi
+  )
+done
+chown -R "$BUILD_UID:$BUILD_GID" /work/dist

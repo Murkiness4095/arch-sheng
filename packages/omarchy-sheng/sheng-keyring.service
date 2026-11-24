@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize the Omarchy Sheng package trust store
+ConditionPathExists=/usr/share/sheng/repo.asc
+ConditionPathExists=!/var/lib/sheng/keyring-initialized
+Before=omarchy-provision-owner.service display-manager.service getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/sheng/init-keyring
+
+[Install]
+WantedBy=multi-user.target

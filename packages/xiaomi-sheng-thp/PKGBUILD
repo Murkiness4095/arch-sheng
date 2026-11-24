@@ -1,0 +1,23 @@
+pkgname=xiaomi-sheng-thp
+pkgver=0.3.9
+pkgrel=1
+pkgdesc='Touch and stylus input service for Xiaomi Pad 6S Pro'
+arch=(aarch64)
+url=https://github.com/ianchb/xiaomi-sheng-thp
+license=(Apache-2.0)
+depends=(glib2 libssc)
+makedepends=(pkgconf)
+_commit=34046210932d654a4c0df0121ecc31c008f8148c
+_src="$pkgname-$_commit"
+source=("$_src.tar.gz::https://codeload.github.com/ianchb/xiaomi-sheng-thp/tar.gz/$_commit")
+sha256sums=(be1e1ba65096b0ebfec780e8ad3b7c06c54a6ab79474d201fdedf059f1b8b345)
+
+build() {
+  make -C "$_src" CXXFLAGS="$CXXFLAGS -std=c++20 -Wall -Wextra"
+}
+
+package() {
+  make -C "$_src" DESTDIR="$pkgdir" install
+  install -d "$pkgdir/usr/lib/modules-load.d"
+  printf '%s\n' uinput > "$pkgdir/usr/lib/modules-load.d/xiaomi-sheng-thp.conf"
+}
