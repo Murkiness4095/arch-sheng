@@ -83,7 +83,7 @@ if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
     cd "$work/firmware"
     runuser -u builder -- makepkg --noconfirm
   )
-  archives=("$work/firmware/"*.pkg.tar.zst)
+  archives=("$work/firmware/"*.pkg.tar.*)
   firmware=${archives[0]}
 fi
 

@@ -17,9 +17,9 @@ for package in omarchy-sheng linux-sheng libssc xiaomi-sheng-thp; do
   (
     cd "$stage/$package"
     runuser -u builder -- env MAKEFLAGS="-j$(nproc)" makepkg --noconfirm --nodeps
-    cp -- ./*.pkg.tar.zst "$dest/"
+    cp -- ./*.pkg.tar.* "$dest/"
     if [[ $package == libssc ]]; then
-      pacman --noconfirm --disable-sandbox -U ./*.pkg.tar.zst
+      pacman --noconfirm --disable-sandbox -U ./*.pkg.tar.*
     fi
   )
 done
