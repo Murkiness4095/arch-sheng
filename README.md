@@ -13,7 +13,7 @@
 
 镜像产物包含 SHA-256 校验文件。每次运行还会生成 `sheng-pacman-repository`，内含已签名的 aarch64 软件包、仓库数据库和公钥。部署长期软件仓库时，从同一次运行取用整套仓库文件。
 
-工作流中的 `include_firmware` 选项用于构建包含设备固件的测试镜像。默认镜像省略设备固件覆盖包，可用 `packages/sheng-firmware` 在 Arch Linux ARM 上本地构建并安装。首次启动请准备实体键盘，用官方 Omarchy 的账户向导创建用户。
+单系统和双系统的镜像默认预装 `sheng-firmware` 设备固件包。手动运行时可以取消 `include_firmware`，用于验证纯镜像构建。首次启动请准备实体键盘，用官方 Omarchy 的账户向导创建用户。
 
 ## 滚动更新
 

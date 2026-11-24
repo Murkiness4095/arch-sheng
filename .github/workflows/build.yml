@@ -88,7 +88,7 @@ jobs:
       - name: Build the Omarchy root filesystem
         env:
           SHENG_REPO_URL: ${{ github.ref == 'refs/heads/main' && vars.SHENG_REPO_URL || '' }}
-          SHENG_WITH_FIRMWARE: ${{ inputs.include_firmware || false }}
+          SHENG_WITH_FIRMWARE: ${{ inputs.include_firmware }}
         run: |
           docker run --rm --privileged --volume "$PWD:/work" \
             --env "BUILD_UID=$(id -u)" --env "BUILD_GID=$(id -g)" \
