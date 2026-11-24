@@ -22,7 +22,7 @@ firmware=$7
 [[ $fingerprint =~ ^([A-F0-9]{40}|[A-F0-9]{64})$ ]] || die 'expected a full signing key fingerprint'
 [[ $user == - || $user =~ ^[a-z_][a-z0-9_-]*$ ]] || die 'invalid username'
 
-in_target() { arch-chroot "$target" "$@"; }
+in_target() { arch-chroot -r "$target" "$@"; }
 [[ $(in_target uname -m) == aarch64 ]] || die 'run on an aarch64 build host'
 in_target pacman -Q omarchy omarchy-settings >/dev/null || die 'start from an official stable ARM64 installation'
 if [[ $user == - ]]; then
@@ -65,8 +65,22 @@ done
 # The key becomes trusted in this image only after fingerprint verification.
 # arch-chroot mounts a temporary filesystem over /tmp on each invocation.
 staging=$(mktemp -d "$target/var/cache/sheng-install.XXXXXXXX")
-trap 'rm -rf -- "$gnupg" "$staging"' EXIT
+resolver=$target/etc/resolv.conf
+restore_resolver() {
+  rm -f -- "$resolver"
+  if [[ -e $staging/resolv.conf || -L $staging/resolv.conf ]]; then
+    mv -T -- "$staging/resolv.conf" "$resolver" || return 1
+  fi
+  rm -rf -- "$gnupg" "$staging"
+}
 chmod 755 "$staging"
+if [[ -e $resolver || -L $resolver ]]; then
+  mv -T -- "$resolver" "$staging/resolv.conf"
+fi
+trap restore_resolver EXIT
+# The staged system may point resolv.conf into /run, where its resolver is
+# absent during the build. Use the build host's DNS only for this transaction.
+install -m644 /etc/resolv.conf "$resolver"
 install -m644 "$key" "$staging/sheng.asc"
 in_target pacman-key --add "${staging#"$target"}/sheng.asc"
 in_target pacman-key --lsign-key "$fingerprint"
