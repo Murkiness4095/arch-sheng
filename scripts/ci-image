@@ -45,11 +45,13 @@ for file in pacman.conf mirrorlist; do
   install -m644 "$omarchy/default/pacman/aarch64/$template" "$dest"
 done
 curl -fsSL --retry 3 "https://raw.githubusercontent.com/omacom/omarchy-iso/$builder_ref/builder/omarchy.gpg" \
-  -o "$source_root/tmp/omarchy.gpg"
+  -o "$work/omarchy.gpg"
+install -m644 "$work/omarchy.gpg" "$source_root/etc/pacman.d/omarchy-ci.gpg"
 arch_root pacman-key --init
 arch_root pacman-key --populate archlinuxarm omarchy
-arch_root pacman-key --add /tmp/omarchy.gpg
+arch_root pacman-key --add /etc/pacman.d/omarchy-ci.gpg
 arch_root pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
+rm "$source_root/etc/pacman.d/omarchy-ci.gpg"
 
 install -d "$source_root/etc/pacman.d/hooks"
 ln -sfn /dev/null "$source_root/etc/pacman.d/hooks/90-mkinitcpio-install.hook"

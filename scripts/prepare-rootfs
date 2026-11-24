@@ -63,15 +63,16 @@ for hook in 60-mkinitcpio-remove 60-limine-mkinitcpio-remove-pre 80-limine-efi-d
 done
 
 # The key becomes trusted in this image only after fingerprint verification.
-key_target=$(mktemp "$target/tmp/sheng-key.XXXXXXXX")
-firmware_target=$(mktemp -d "$target/tmp/sheng-firmware.XXXXXXXX")
-trap 'rm -rf -- "$gnupg" "$firmware_target"; rm -f -- "$key_target"' EXIT
-install -m644 "$key" "$key_target"
-in_target pacman-key --add "${key_target#"$target"}"
+# arch-chroot mounts a temporary filesystem over /tmp on each invocation.
+staging=$(mktemp -d "$target/var/cache/sheng-install.XXXXXXXX")
+trap 'rm -rf -- "$gnupg" "$staging"' EXIT
+chmod 755 "$staging"
+install -m644 "$key" "$staging/sheng.asc"
+in_target pacman-key --add "${staging#"$target"}/sheng.asc"
 in_target pacman-key --lsign-key "$fingerprint"
 if [[ $firmware != - ]]; then
-  install -m644 "$firmware" "$firmware_target/${firmware##*/}"
-  firmware_path=${firmware_target#"$target"}/${firmware##*/}
+  install -m644 "$firmware" "$staging/${firmware##*/}"
+  firmware_path=${staging#"$target"}/${firmware##*/}
   [[ $(in_target pacman -Qqp "$firmware_path") == sheng-firmware ]] || die 'expected a locally built sheng-firmware package'
   in_target pacman -U --noconfirm --disable-sandbox --needed "$firmware_path"
 fi
