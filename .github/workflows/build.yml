@@ -1,29 +1,26 @@
-name: Build Omarchy Sheng
+name: Omarchy Sheng build implementation
 
 on:
-  push:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       partition:
         description: Root partition layout
-        type: choice
-        options: [linux, userdata]
-        default: linux
+        type: string
+        required: true
       include_firmware:
         description: Include the device firmware overlay in the image
         type: boolean
         default: false
+    secrets:
+      SHENG_SIGNING_KEY:
+        required: false
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   ARCH_ARM_IMAGE: ghcr.io/menci/archlinuxarm@sha256:3e1074c407fc1a57c2a2117af6920c96a7cc906fa6f1f2da8a4a7fd3aa2c2f4e
-  PARTLABEL: ${{ inputs.partition || 'linux' }}
+  PARTLABEL: ${{ inputs.partition }}
 
 jobs:
   packages:

@@ -4,13 +4,14 @@
 
 ## GitHub Actions 构建
 
-[Build Omarchy Sheng](https://github.com/Murkiness4095/omarchy-sheng/actions/workflows/build.yml) 在 GitHub 的 ARM64 runner 上构建软件包、U-Boot 和 ext4 根镜像。推送默认构建双系统布局。手动运行工作流时可选择 `linux`（独立 Linux 分区）或 `userdata`（单系统）。下列产物以 `linux` 为例。
+推送到 `main` 会触发单系统和双系统两条工作流。两条都可独立手动运行，在 GitHub 的 ARM64 runner 上构建软件包、匹配的 U-Boot 和 ext4 根镜像。
 
-| 产物 | 内容 |
-| --- | --- |
-| `rootfs-linux` | `rootfs-linux.img.zst` 和 SHA-256 校验 |
-| `uboot-linux` | 匹配 `linux` 分区的 Android 格式 U-Boot 镜像和 SHA-256 校验 |
-| `sheng-pacman-repository` | 已签名的 aarch64 软件包、仓库数据库和公钥 |
+| 工作流 | 根分区 | 镜像产物 |
+| --- | --- | --- |
+| [单系统](https://github.com/Murkiness4095/omarchy-sheng/actions/workflows/build-single.yml) | `userdata` | `rootfs-userdata`、`uboot-userdata` |
+| [双系统](https://github.com/Murkiness4095/omarchy-sheng/actions/workflows/build-dual.yml) | `linux` | `rootfs-linux`、`uboot-linux` |
+
+镜像产物包含 SHA-256 校验文件。每次运行还会生成 `sheng-pacman-repository`，内含已签名的 aarch64 软件包、仓库数据库和公钥。部署长期软件仓库时，从同一次运行取用整套仓库文件。
 
 工作流中的 `include_firmware` 选项用于构建包含设备固件的测试镜像。默认镜像省略设备固件覆盖包，可用 `packages/sheng-firmware` 在 Arch Linux ARM 上本地构建并安装。首次启动请准备实体键盘，用官方 Omarchy 的账户向导创建用户。
 

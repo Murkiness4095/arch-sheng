@@ -1,0 +1,27 @@
+name: Build Omarchy Sheng (single boot)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      include_firmware:
+        description: Include the device firmware overlay in the image
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-single-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      partition: userdata
+      include_firmware: ${{ inputs.include_firmware || false }}
+    secrets:
+      SHENG_SIGNING_KEY: ${{ secrets.SHENG_SIGNING_KEY }}
