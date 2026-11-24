@@ -14,10 +14,11 @@ fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1=="sec"{
 [[ $fingerprint =~ ^[A-F0-9]{40}$ ]]
 printf '%s\n' "$fingerprint" > sheng.fingerprint
 gpg --batch --armor --export "$fingerprint" > sheng.asc
-for archive in *.pkg.tar.*; do
+archives=(./*.pkg.tar.*)
+for archive in "${archives[@]}"; do
   gpg --batch --yes --local-user "$fingerprint" --detach-sign "$archive"
 done
-repo-add --sign --key "$fingerprint" sheng.db.tar.gz ./*.pkg.tar.*
+repo-add --sign --key "$fingerprint" sheng.db.tar.gz "${archives[@]}"
 # Artifact upload transports ordinary files. Preserve pacman's conventional aliases.
 for alias in sheng.db sheng.db.sig sheng.files sheng.files.sig; do
   if [[ -L $alias ]]; then

@@ -90,7 +90,7 @@ if [[ $user == - ]]; then
   install -m644 "$key" "$target/usr/share/sheng/repo.asc"
   printf "%s\n" "$fingerprint" > "$target/usr/share/sheng/repo.fingerprint"
   chroot "$target" systemctl enable sheng-keyring.service
-  chroot "$target" gpgconf --homedir /etc/pacman.d/gnupg --kill all
+  in_target gpgconf --homedir /etc/pacman.d/gnupg --kill all
   rm -rf -- "$target/etc/pacman.d/gnupg"
 fi
 if [[ $build_server != "$repo" ]]; then
