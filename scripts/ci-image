@@ -86,13 +86,13 @@ case "$profile" in
     display_manager=sddm.service
     ;;
   niri)
-    desktop=(niri sheng/noctalia foot fuzzel xdg-desktop-portal-gnome xwayland-satellite sddm)
-    display_manager=sddm.service
+    desktop=(niri sheng/noctalia noctalia-greeter greetd foot fuzzel xdg-desktop-portal-gnome xwayland-satellite)
+    display_manager=greetd.service
     install -Dm644 profiles/niri/config.kdl "$target/etc/skel/.config/niri/config.kdl"
     ;;
   denial|denial-mobile)
-    desktop=(denial/denial vulkan-freedreno foot sddm)
-    display_manager=sddm.service
+    desktop=(denial/denial vulkan-freedreno foot greetd greetd-agreety)
+    display_manager=greetd.service
     curl -fsSL --retry 3 https://denialwm.github.io/denial/denial-repo-key.asc -o "$work/denial.asc"
     expected=AE4108FA5E91E26BE0EE331E0F5B3AD16E023091
     actual=$(gpg --batch --with-colons --show-keys "$work/denial.asc" |
@@ -107,6 +107,7 @@ case "$profile" in
 esac
 if [[ -n $display_manager ]]; then
   desktop+=(firefox noto-fonts noto-fonts-cjk pipewire-pulse wireplumber xdg-desktop-portal-gtk
+    bluez bluez-utils upower power-profiles-daemon
     fcitx5 fcitx5-rime fcitx5-gtk fcitx5-qt fcitx5-configtool rime-luna-pinyin)
   skel=$target/etc/skel/.config
   install -Dm644 profiles/common/fcitx5-profile "$skel/fcitx5/profile"
@@ -147,7 +148,7 @@ if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
   rm -r "$target/var/cache/sheng/firmware"
 fi
 
-in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp "${desktop[@]}"
+in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp sheng/sheng-devauth "${desktop[@]}"
 case "$profile" in
   plasma-mobile)
     mobile_session=/usr/share/wayland-sessions/plasma-mobile.desktop
@@ -158,6 +159,22 @@ case "$profile" in
     ;;
   denial-mobile)
     printf '\nDENIAL_SHELL_PROFILE=mobile\n' >> "$target/etc/denial/session.conf"
+    ;;
+esac
+case "$profile" in
+  niri)
+    [[ -x $target/usr/bin/noctalia-greeter-session ]]
+    cat > "$target/etc/greetd/config.toml" <<'TOML'
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/bin/noctalia-greeter-session -- --session niri"
+user = "greeter"
+TOML
+    ;;
+  denial|denial-mobile)
+    in_target sheng-denial-login "$username"
     ;;
 esac
 in_target sheng-boot install
@@ -174,7 +191,7 @@ chmod 440 "$target/etc/sudoers.d/10-sheng-wheel"
 in_target visudo -c
 chroot "$target" systemctl set-default multi-user.target
 if [[ -n $display_manager ]]; then
-  chroot "$target" systemctl enable "$display_manager"
+  chroot "$target" systemctl enable "$display_manager" bluetooth.service power-profiles-daemon.service
   touch "$target/etc/sheng/graphical"
 fi
 if [[ -n $username ]]; then
@@ -199,6 +216,9 @@ cat > "$target/etc/systemd/system/getty@tty1.service.d/sheng-first-login.conf" <
 ExecStartPre=/usr/bin/bash -ec '/usr/lib/sheng/first-login </dev/tty1 >/dev/tty1 2>&1'
 UNIT
 chroot "$target" systemctl enable sheng-keyring.service NetworkManager.service systemd-resolved.service xiaomi-sheng-thp.service
+if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
+  chroot "$target" systemctl enable sheng-devauth.service
+fi
 ln -sfn /run/systemd/resolve/stub-resolv.conf "$target/etc/resolv.conf"
 in_target gpgconf --homedir /etc/pacman.d/gnupg --kill all
 rm -r "$target/etc/pacman.d/gnupg"

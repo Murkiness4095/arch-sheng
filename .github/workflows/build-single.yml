@@ -87,7 +87,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: dist/unsigned/device
-          key: device-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/arch-sheng/**', 'packages/libssc/**', 'packages/xiaomi-sheng-thp/**') }}
+          key: device-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/arch-sheng/**', 'packages/libssc/**', 'packages/xiaomi-sheng-thp/**', 'packages/sheng-devauth/**') }}
       - name: Cache unsigned kernel
         id: kernel
         uses: actions/cache@v4

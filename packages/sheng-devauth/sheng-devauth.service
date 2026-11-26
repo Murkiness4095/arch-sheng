@@ -1,0 +1,13 @@
+[Unit]
+Description=Xiaomi detachable keyboard authentication
+ConditionPathExists=/usr/lib/firmware/updates/qcom/sm8550/sheng/devauth.mbn
+Requires=qteesupplicant.service
+After=qteesupplicant.service
+
+[Service]
+ExecStart=/usr/bin/xiaomi_devauth
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

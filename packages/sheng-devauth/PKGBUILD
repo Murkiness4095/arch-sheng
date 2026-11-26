@@ -1,0 +1,46 @@
+pkgname=sheng-devauth
+pkgver=1.0
+pkgrel=1
+pkgdesc='Xiaomi Pad 6S Pro keyboard authentication and QTEE listener services'
+arch=(aarch64)
+url=https://github.com/ianchb/sheng_devauth
+license=(BSD-3-Clause LicenseRef-Vendor)
+depends=(glibc)
+options=(!strip !debug)
+_devauth=bac03b5bcfefa1467ebad490edd910a6cef8a207
+_qtee=76e7301163b0e708f609c9864b3e5833e9f57402
+source=("devauth-$_devauth.tar.gz::https://codeload.github.com/ianchb/sheng_devauth/tar.gz/$_devauth"
+        "qtee-$_qtee.tar.gz::https://codeload.github.com/ianchb/xiaomi-sheng-fingerprint/tar.gz/$_qtee"
+        sheng-devauth.service)
+sha256sums=(bc48c5263c607ddf798cbc21a2aecde8e72bbbab3843aa662e99668d8722bfb4
+            8bd34b74f7543cef648593e303a477638bd8315f5c9fc7dc90c684e646ae9278
+            e816d3fd9bd3830bff8083847c9c0f118ae979fdc0c46e8eb7f379359c0181ec)
+
+prepare() {
+  cd "$srcdir/xiaomi-sheng-fingerprint-$_qtee"
+  sha256sum -c prebuilt/aarch64/SHA256SUMS
+  cd "$srcdir/sheng_devauth-$_devauth"
+  sed -i 's@/usr/lib/firmware/qcom/sm8550/sheng@/usr/lib/firmware/updates/qcom/sm8550/sheng@' main.c
+}
+
+build() {
+  make -C "$srcdir/sheng_devauth-$_devauth"
+}
+
+package() {
+  local runtime="$srcdir/xiaomi-sheng-fingerprint-$_qtee" listener filename
+  install -Dm755 "$srcdir/sheng_devauth-$_devauth/xiaomi_devauth" "$pkgdir/usr/bin/xiaomi_devauth"
+  install -Dm644 "$srcdir/sheng_devauth-$_devauth/libs/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm755 "$runtime/prebuilt/aarch64/qteesupplicant" "$pkgdir/usr/libexec/qteesupplicant"
+  install -Dm755 "$runtime/prebuilt/aarch64/sfs_config" "$pkgdir/usr/libexec/fpc-sfs-config"
+  for listener in "$runtime"/prebuilt/aarch64/qtee-listeners/*.so.1.0.0; do
+    filename=${listener##*/}
+    install -Dm644 "$listener" "$pkgdir/usr/lib/qtee-listeners/$filename"
+    ln -s "$filename" "$pkgdir/usr/lib/qtee-listeners/${filename%.0.0}"
+  done
+  install -Dm644 "$runtime/systemd/qteesupplicant.service" "$runtime/systemd/sfsconfig.service" \
+    "$srcdir/sheng-devauth.service" -t "$pkgdir/usr/lib/systemd/system"
+  install -Dm644 "$runtime/udev/99-qcomtee-fpc.rules" "$pkgdir/usr/lib/udev/rules.d/99-qcomtee-fpc.rules"
+  sed -i 's@/usr/lib/aarch64-linux-gnu/qtee-listeners@/usr/lib/qtee-listeners@' \
+    "$pkgdir/usr/lib/systemd/system/qteesupplicant.service"
+}

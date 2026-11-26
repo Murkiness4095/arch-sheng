@@ -1,0 +1,44 @@
+#!/usr/bin/bash
+set -euo pipefail
+
+username=${1:-}
+if [[ $# -lt 1 || $# -gt 2 || $EUID != 0 || ! $username =~ ^[a-z][a-z0-9_-]{0,30}$ ||
+      $username == root || ( $# == 2 && $2 != --activate ) ]]; then
+  echo 'usage: sudo sheng-denial-login USER [--activate]' >&2
+  exit 1
+fi
+config=/etc/greetd/config.toml
+[[ -x /usr/bin/denial-session && -x /usr/bin/agreety && -f $config ]]
+if [[ ${2:-} == --activate ]]; then
+  getent passwd "$username" >/dev/null
+fi
+if [[ ! -e $config.before-sheng ]]; then
+  cp -a -- "$config" "$config.before-sheng"
+fi
+staging=$(mktemp /etc/greetd/.config.XXXXXXXX)
+trap 'rm -f -- "$staging"' EXIT
+cat > "$staging" <<TOML
+[terminal]
+vt = 1
+
+[initial_session]
+command = "/usr/bin/denial-session --start-locked"
+user = "$username"
+
+[default_session]
+command = "/usr/bin/agreety --cmd /usr/bin/denial-session"
+user = "greeter"
+TOML
+chmod 644 "$staging"
+mv -fT -- "$staging" "$config"
+if [[ ${2:-} == --activate ]]; then
+  if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
+    systemctl disable sddm.service
+    if ! systemctl enable greetd.service; then
+      systemctl enable sddm.service
+      exit 1
+    fi
+  else
+    systemctl enable greetd.service
+  fi
+fi

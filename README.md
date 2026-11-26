@@ -44,3 +44,15 @@ Fork 可通过 GitHub Actions Secrets 设置自己的 `SHENG_SIGNING_KEY`，通�
 主分支推送构建只打包和签名一次，两个镜像任务共用同一份签名软件仓库。手动构建也会从 Actions 缓存复用未签名内核包、设备包、Noctalia 包和对应布局的 U-Boot。软件包在当前运行中重新签名，签名密钥和已签名索引不会进入缓存。
 
 内核包缓存未命中时，构建仍会尝试复用 Linux 编译器缓存。软件包配方、构建脚本或固定构建容器有变化时会重新打包。遇到 Arch Linux ARM 上游工具链或库 ABI 变更时，可以更新仓库变量 `SHENG_PACKAGE_CACHE_EPOCH`，让下一次运行重建软件包与编译缓存。
+
+### 更新已安装的 Denial
+
+有正式 `[sheng]` 软件源的现有 Denial 安装可以直接更新。以下命令会保留当前登录会话，新的登录界面在重启后生效。
+
+```sh
+sudo pacman -Syu greetd greetd-agreety bluez bluez-utils upower power-profiles-daemon sheng-devauth
+sudo sheng-denial-login "$(id -un)" --activate
+sudo systemctl enable --now bluetooth.service power-profiles-daemon.service sheng-devauth.service
+```
+
+Denial 由 greetd 启动原生锁屏，注销后可通过文字登录返回 Denial。Niri 使用 greetd 和 Noctalia Greeter。原装键盘依赖设备固件和认证服务，若仍失灵，可用 `sudo journalctl -b -u sheng-devauth -u qteesupplicant --no-pager` 查看认证日志。

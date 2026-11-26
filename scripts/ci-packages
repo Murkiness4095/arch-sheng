@@ -59,6 +59,7 @@ if [[ $device == true ]]; then
   build_package device libssc
   pacman --noconfirm --disable-sandbox -U /work/dist/unsigned/device/libssc-*.pkg.tar.*
   build_package device xiaomi-sheng-thp
+  build_package device sheng-devauth
 fi
 if [[ $kernel == true ]]; then
   (
