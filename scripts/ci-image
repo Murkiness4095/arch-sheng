@@ -204,7 +204,6 @@ in_target gpgconf --homedir /etc/pacman.d/gnupg --kill all
 rm -r "$target/etc/pacman.d/gnupg"
 truncate -s 0 "$target/etc/machine-id"
 umount "$target"
-e2fsck -fn "$image"
 install -d dist/image
-img2simg "$image" "dist/image/rootfs-$partlabel-$profile.img"
+bash scripts/sparse-rootfs "$image" "dist/image/rootfs-$partlabel-$profile.img"
 chown -R "$BUILD_UID:$BUILD_GID" dist/image

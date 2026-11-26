@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export LC_ALL=C
+
+if [[ $# != 2 || ! -f $1 || -e $2 || -L $2 ]]; then
+  echo 'usage: sparse-rootfs UNMOUNTED_EXT4_IMAGE NEW_ANDROID_SPARSE_IMAGE' >&2
+  exit 1
+fi
+image=$1
+output=$2
+
+e2fsck -fn "$image"
+geometry() {
+  dumpe2fs -h "$image" 2>/dev/null |
+    awk '/^Block count:/ { count=$3 } /^Block size:/ { size=$3 }
+         END { if (!count || !size) exit 1; print count, size }'
+}
+read -r blocks block_size <<< "$(geometry)"
+minimum=$(resize2fs -P "$image" | awk '/Estimated minimum size/ { print $NF }')
+[[ $minimum =~ ^[1-9][0-9]*$ ]]
+# Keep room for first boot, then systemd-growfs expands to the real partition.
+wanted=$((minimum + 512 * 1024 * 1024 / block_size))
+if (( wanted < blocks )); then
+  resize2fs "$image" "$wanted"
+fi
+read -r blocks block_size <<< "$(geometry)"
+truncate -s "$((blocks * block_size))" "$image"
+e2fsck -fn "$image"
+img2simg "$image" "$output"
+printf 'Expanded flash image size: %s bytes\n' "$((blocks * block_size))"
