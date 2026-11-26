@@ -86,12 +86,12 @@ case "$profile" in
     display_manager=sddm.service
     ;;
   niri)
-    desktop=(niri sheng/noctalia noctalia-greeter greetd foot fuzzel xdg-desktop-portal-gnome xwayland-satellite)
+    desktop=(niri sheng/noctalia noctalia-greeter greetd foot thunar fuzzel xdg-desktop-portal-gnome xwayland-satellite)
     display_manager=greetd.service
     install -Dm644 profiles/niri/config.kdl "$target/etc/skel/.config/niri/config.kdl"
     ;;
   denial|denial-mobile)
-    desktop=(denial/denial sheng/sheng-rotation vulkan-freedreno foot greetd greetd-agreety)
+    desktop=(denial/denial sheng/sheng-rotation vulkan-freedreno foot thunar greetd greetd-agreety)
     if [[ ${SHENG_WITH_DROIDLOOM:-false} == true ]]; then
       printf "\n[droidloom]\nSigLevel = Never\nServer = https://denialwm.github.io/droidloom/\$arch\nCacheServer = https://github.com/denialwm/droidloom/releases/download/packages\n" >> "$target/etc/pacman.conf"
       desktop+=(droidloom/droidloom-runtime droidloom/droidloom-image)
