@@ -1,0 +1,109 @@
+diff --git a/packages/denial_flutter_sdk/lib/src/services/power_profile_service.dart b/packages/denial_flutter_sdk/lib/src/services/power_profile_service.dart
+index 4245e80..562c262 100644
+--- a/packages/denial_flutter_sdk/lib/src/services/power_profile_service.dart
++++ b/packages/denial_flutter_sdk/lib/src/services/power_profile_service.dart
+@@ -23,6 +23,27 @@ class PowerProfileService {
+   /// The active profile, or null when no power-profile service answers.
+   Future<String?> read() => _client.readActiveProfile();
+ 
++  /// Cycles through the modes the daemon actually exposes, in shell order.
++  Future<String?> cycle() async {
++    final current = await read();
++    final endpoint = await _client.resolve();
++    if (current == null || endpoint == null) return current;
++    try {
++      final available = await endpoint.readAvailableProfiles();
++      var candidate = PowerProfile.next(current);
++      while (candidate != current) {
++        if (available.contains(candidate)) {
++          await write(candidate);
++          break;
++        }
++        candidate = PowerProfile.next(candidate);
++      }
++    } on Object {
++      // Keep the tile in sync with the daemon if discovery fails.
++    }
++    return read();
++  }
++
+   /// Asks the service for [profile]. Returns whether it accepted it.
+   Future<bool> write(String profile) async {
+     final endpoint = await _client.resolve();
+diff --git a/packages/denial_flutter_sdk/lib/src/services/power_profiles_client.dart b/packages/denial_flutter_sdk/lib/src/services/power_profiles_client.dart
+index 4926e34..494503d 100644
+--- a/packages/denial_flutter_sdk/lib/src/services/power_profiles_client.dart
++++ b/packages/denial_flutter_sdk/lib/src/services/power_profiles_client.dart
+@@ -74,6 +74,21 @@ final class PowerProfilesEndpoint {
+     }
+   }
+ 
++  Future<Set<String>> readAvailableProfiles() async {
++    final value = await _object.getProperty(_interface, 'Profiles').timeout(_timeout);
++    if (value is! DBusArray) return {};
++    const profileKey = DBusString('Profile');
++    final profiles = <String>{};
++    for (final entry in value.children.whereType<DBusDict>()) {
++      final field = entry.children[profileKey];
++      if (field is DBusVariant && field.value is DBusString) {
++        final profile = PowerProfile.normalize((field.value as DBusString).value);
++        if (profile != null) profiles.add(profile);
++      }
++    }
++    return profiles;
++  }
++
+   Future<void> setActiveProfile(String profile) => _object
+       .setProperty(_interface, 'ActiveProfile', DBusString(profile))
+       .timeout(_timeout);
+diff --git a/plugins/denial_desktop/lib/src/state/quick_settings.dart b/plugins/denial_desktop/lib/src/state/quick_settings.dart
+index 47275aa..ed4e8c0 100644
+--- a/plugins/denial_desktop/lib/src/state/quick_settings.dart
++++ b/plugins/denial_desktop/lib/src/state/quick_settings.dart
+@@ -74,6 +74,7 @@ class QuickSettingsController extends Notifier<QuickSettingsState>
+     _observedVolumePercent = -1;
+     _volumeInteracting = false;
+     _deferredAudioState = null;
++    _profileChanging = false;
+     _buildGeneration = beginBuildGeneration();
+     final generation = _buildGeneration;
+     final subscription = _audio.states.listen(
+@@ -103,6 +104,7 @@ class QuickSettingsController extends Notifier<QuickSettingsState>
+   late PowerProfileService _power;
+   late SystemActionsService _actions;
+   late int _buildGeneration;
++  bool _profileChanging = false;
+ 
+   Timer? _volumeTimer;
+   Timer? _volumeAcknowledgementTimer;
+@@ -310,23 +312,13 @@ class QuickSettingsController extends Notifier<QuickSettingsState>
+     });
+   }
+ 
+-  void cycleProfile() {
+-    final current = state.profile;
+-    if (current == null) {
+-      return;
+-    }
+-    final next = PowerProfile.next(current);
+-    state = state.copyWith(profile: next);
+-    unawaited(_applyProfile(next, _buildGeneration));
+-  }
+-
+-  /// Writes [profile], then shows the profile the system actually runs, so a
+-  /// refused service never leaves a made-up label behind. A service that no
+-  /// longer answers takes the tile away.
+-  Future<void> _applyProfile(String profile, int generation) async {
+-    await _power.write(profile);
+-    final actual = await _power.read();
+-    if (isBuildGenerationActive(generation) && state.profile == profile) {
++  Future<void> cycleProfile() async {
++    if (state.profile == null || _profileChanging) return;
++    final generation = _buildGeneration;
++    _profileChanging = true;
++    final actual = await _power.cycle();
++    if (isBuildGenerationActive(generation)) {
++      _profileChanging = false;
+       state = actual == null
+           ? state.copyWith(clearProfile: true)
+           : state.copyWith(profile: actual);

@@ -1,6 +1,6 @@
 pkgname=sheng-rotation
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Sheng Qualcomm sensor transport and Denial orientation service'
 arch=(aarch64)
 url=https://github.com/denialwm/phonewave
@@ -19,8 +19,8 @@ sha256sums=(0d93318b988515494315aa8c0f03278ef3961e6793e92145c55f65b8acfd3708
             a92c3a7803156198e501e78c454f12fc2b496e92f60fb50f896e5f8c22b78212 c2499059916a202c335ad8f1a7d707859976b2ac9064acdee137676d6eb7a1bc)
 
 prepare() {
-  # Match the Sheng accelerometer mount matrix used by the Debian/NixOS port.
-  sed -i "s/return Self::default();/return Self::NegX;/g" \
+  # Match the upright display orientation observed on Sheng.
+  sed -i "s/return Self::default();/return Self::X;/g" \
     "phonewave-$_phonewave/services/sensors/steinerd/src/frame.rs"
 }
 
