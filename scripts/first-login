@@ -1,0 +1,31 @@
+#!/usr/bin/bash
+set -euo pipefail
+state=/var/lib/sheng
+[[ ! -e $state/console-initialized ]] || exit 0
+
+# Keep the selected account across reboots or interrupted password entry.
+if [[ -e $state/first-user ]]; then
+  username=$(< "$state/first-user")
+else
+  while true; do
+    read -rp 'Choose an account name: ' username
+    if [[ $username =~ ^[a-z][a-z0-9_-]{0,30}$ ]] && ! getent passwd "$username" >/dev/null; then
+      break
+    fi
+    printf 'Choose an unused lowercase Linux username.\n'
+  done
+  printf '%s\n' "$username" > "$state/first-user"
+fi
+if ! getent passwd "$username" >/dev/null; then
+  useradd -m -G wheel -s /usr/bin/bash "$username"
+fi
+while ! passwd "$username"; do
+  printf 'Password was not set. Please try again.\n'
+done
+if [[ -e /etc/sheng/graphical ]]; then
+  systemctl set-default graphical.target
+fi
+touch "$state/console-initialized"
+if [[ -e /etc/sheng/graphical ]]; then
+  systemctl --no-block start graphical.target
+fi

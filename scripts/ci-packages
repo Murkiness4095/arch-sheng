@@ -13,7 +13,17 @@ chown -R builder:builder "$stage"
 dest=/work/dist/packages
 install -d "$dest"
 
-for package in arch-sheng linux-sheng libssc xiaomi-sheng-thp; do
+packages=(arch-sheng linux-sheng libssc xiaomi-sheng-thp)
+if [[ ${SHENG_PROFILE:-tty} == niri ]]; then
+  (
+    depends=()
+    makedepends=()
+    source /work/packages/noctalia/PKGBUILD
+    pacman --noconfirm --disable-sandbox -S --needed "${depends[@]}" "${makedepends[@]}"
+  )
+  packages+=(noctalia)
+fi
+for package in "${packages[@]}"; do
   (
     cd "$stage/$package"
     runuser -u builder -- env MAKEFLAGS="-j$(nproc)" makepkg --noconfirm --nodeps

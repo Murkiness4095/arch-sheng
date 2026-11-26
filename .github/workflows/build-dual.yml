@@ -5,6 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      profile:
+        description: Desktop profile
+        type: choice
+        options: [tty, gnome, kde, niri, denial]
+        default: tty
       include_firmware:
         description: Include the device firmware overlay in the image
         type: boolean
@@ -14,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-dual-${{ github.ref }}
+  group: build-dual-${{ github.ref }}-${{ inputs.profile || 'tty' }}
   cancel-in-progress: false
 
 jobs:
@@ -22,6 +27,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       partition: linux
+      profile: ${{ inputs.profile || 'tty' }}
       include_firmware: ${{ github.event_name == 'push' || inputs.include_firmware }}
     secrets:
       SHENG_SIGNING_KEY: ${{ secrets.SHENG_SIGNING_KEY }}
