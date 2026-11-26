@@ -1,0 +1,12 @@
+[Unit]
+Description=Initialize the Arch Linux ARM Sheng package trust store
+ConditionPathExists=/usr/share/sheng/sheng.asc
+ConditionPathExists=!/var/lib/sheng/keyring-initialized
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/sheng/init-keyring
+
+[Install]
+WantedBy=multi-user.target

@@ -1,4 +1,4 @@
-name: Build Omarchy Sheng (dual boot)
+name: Build Arch Sheng (dual boot)
 
 on:
   push:

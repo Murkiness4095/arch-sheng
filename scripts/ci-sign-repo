@@ -7,7 +7,7 @@ trap 'gpgconf --kill all; rm -rf -- "$GNUPGHOME"' EXIT
 if [[ -n ${SHENG_SIGNING_KEY:-} ]]; then
   printf '%s' "$SHENG_SIGNING_KEY" | gpg --batch --import
 else
-  gpg --batch --passphrase '' --quick-generate-key 'Omarchy Sheng CI preview' ed25519 sign 0
+  gpg --batch --passphrase '' --quick-generate-key 'Arch Linux ARM Sheng CI preview' ed25519 sign 0
 fi
 unset SHENG_SIGNING_KEY
 fingerprint=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1=="sec"{p=1} $1=="fpr"&&p{print $10;p=0}')

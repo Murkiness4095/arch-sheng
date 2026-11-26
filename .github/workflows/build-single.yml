@@ -1,4 +1,4 @@
-name: Build Omarchy Sheng (single boot)
+name: Build Arch Sheng (single boot)
 
 on:
   push:

@@ -1,7 +1,0 @@
-#!/usr/bin/bash
-set -euo pipefail
-pacman-key --init
-pacman-key --populate archlinuxarm omarchy
-pacman-key --add /usr/share/sheng/repo.asc
-pacman-key --lsign-key "$(< /usr/share/sheng/repo.fingerprint)"
-touch /var/lib/sheng/keyring-initialized

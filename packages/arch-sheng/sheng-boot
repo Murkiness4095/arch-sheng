@@ -123,9 +123,9 @@ conf_tmp=$(mktemp "${config%/*}/.extlinux.XXXXXXXX")
 } > "$conf_tmp"
 menu_tmp=$(mktemp "$boot/.sheng-menu.XXXXXXXX")
 {
-  printf 'bootmenu_0=Omarchy %s=setenv pxe_label_override; run bootlinux\n' "$release"
+  printf 'bootmenu_0=Arch Linux ARM %s=setenv pxe_label_override; run bootlinux\n' "$release"
   if [[ -n $previous ]]; then
-    printf 'bootmenu_1=Omarchy fallback %s=setenv pxe_label_override previous; run bootlinux\n' "$previous"
+    printf 'bootmenu_1=Arch Linux ARM fallback %s=setenv pxe_label_override previous; run bootlinux\n' "$previous"
     printf 'bootmenu_2=Reboot to fastboot=run rebootfastboot\n'
   else
     printf 'bootmenu_1=Reboot to fastboot=run rebootfastboot\n'

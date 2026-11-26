@@ -3,7 +3,7 @@ set -euo pipefail
 cd /work
 pacman-key --init
 pacman-key --populate archlinuxarm
-printf 'Server = https://arm-stable-mirror.omarchy.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
+printf 'Server = http://mirror.archlinuxarm.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
 pacman --noconfirm --disable-sandbox -Syu --needed base-devel bc bison flex gettext kmod libelf \
   openssl pahole perl python zstd meson ninja pkgconf protobuf glib2 libqmi protobuf-c
 useradd -m builder
@@ -13,7 +13,7 @@ chown -R builder:builder "$stage"
 dest=/work/dist/packages
 install -d "$dest"
 
-for package in omarchy-sheng linux-sheng libssc xiaomi-sheng-thp; do
+for package in arch-sheng linux-sheng libssc xiaomi-sheng-thp; do
   (
     cd "$stage/$package"
     runuser -u builder -- env MAKEFLAGS="-j$(nproc)" makepkg --noconfirm --nodeps

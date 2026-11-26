@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+set -euo pipefail
+pacman-key --init
+pacman-key --populate archlinuxarm
+pacman-key --add /usr/share/sheng/sheng.asc
+pacman-key --lsign-key "$(< /usr/share/sheng/sheng.fingerprint)"
+touch /var/lib/sheng/keyring-initialized

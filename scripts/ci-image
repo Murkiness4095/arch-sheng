@@ -2,81 +2,63 @@
 set -euo pipefail
 cd /work
 repo=${SHENG_REPO_URL:-file:///var/cache/sheng/repo}
-export SHENG_BUILD_REPO=/work/dist/packages
+local_repo=file:///var/cache/sheng/repo
 partlabel=${SHENG_PARTLABEL:-linux}
-iso_url=https://iso.omarchy.org/omarchy-4.5.0-aarch64.iso
-iso_hash=c9a9dd1107c10924eeb1e885226f9884080b1ffbf227d1f7f9ad255e4cebfb17
-builder_ref=e5120c67cdb7662dd4e7cd4369561b0da52365fa
+[[ $partlabel == linux || $partlabel == userdata ]]
+[[ $repo == "$local_repo" || $repo =~ ^https://[^[:space:]\#]+$ ]]
 
 pacman-key --init
 pacman-key --populate archlinuxarm
-printf 'Server = https://arm-stable-mirror.omarchy.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
-pacman --noconfirm --disable-sandbox -Syu --needed arch-install-scripts btrfs-progs curl e2fsprogs gnupg rsync xorriso zstd
+printf 'Server = http://mirror.archlinuxarm.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
+pacman --noconfirm --disable-sandbox -Syu --needed arch-install-scripts e2fsprogs gnupg zstd
+if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
+  pacman --noconfirm --disable-sandbox -S --needed base-devel
+fi
 
 work=$(mktemp -d /work/.sheng-image.XXXXXXXX)
-source_root=$work/source
-mkdir "$source_root"
+target=$work/root
+image=$work/root.img
 cleanup() {
-  if mountpoint -q "$source_root"; then
-    umount "$source_root" || return
+  if mountpoint -q "$target"; then
+    umount "$target" || return
   fi
   rm -rf -- "$work"
 }
 trap cleanup EXIT
-curl -fL --retry 3 "$iso_url" -o "$work/omarchy.iso"
-printf '%s  %s\n' "$iso_hash" "$work/omarchy.iso" | sha256sum -c -
-xorriso -osirrox on -indev "$work/omarchy.iso" \
-  -extract /arch/aarch64/omarchy-root.img.zst "$work/root.img.zst"
-rm "$work/omarchy.iso"
-zstd -d --sparse --rm "$work/root.img.zst" -o "$work/root.img"
-mount -o loop,subvol=omarchy-root "$work/root.img" "$source_root"
+mkdir "$target"
+truncate -s 20G "$image"
+mkfs.ext4 -O '^orphan_file,^metadata_csum_seed' "$image"
+mount -o loop "$image" "$target"
 
-arch_root() { arch-chroot "$source_root" "$@"; }
-omarchy=$source_root/usr/share/omarchy
-for file in pacman.conf mirrorlist; do
-  template=$file
-  dest=$source_root/etc/pacman.d/$file
-  if [[ $file == pacman.conf ]]; then
-    template=pacman-stable.conf
-    dest=$source_root/etc/$file
-  else
-    template=mirrorlist-stable
-  fi
-  install -m644 "$omarchy/default/pacman/aarch64/$template" "$dest"
-done
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/omacom/omarchy-iso/$builder_ref/builder/omarchy.gpg" \
-  -o "$work/omarchy.gpg"
-install -m644 "$work/omarchy.gpg" "$source_root/etc/pacman.d/omarchy-ci.gpg"
-arch_root pacman-key --init
-arch_root pacman-key --populate archlinuxarm omarchy
-arch_root pacman-key --add /etc/pacman.d/omarchy-ci.gpg
-arch_root pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
-rm "$source_root/etc/pacman.d/omarchy-ci.gpg"
+# The runner container may not expose Landlock to pacman.
+mkdir "$work/bin"
+printf '#!/bin/sh\nexec /usr/bin/pacman --disable-sandbox "$@"\n' > "$work/bin/pacman"
+chmod 755 "$work/bin/pacman"
+PATH="$work/bin:$PATH" pacstrap -c -G -M "$target" \
+  base archlinuxarm-keyring e2fsprogs linux-firmware-qcom mesa networkmanager sudo vim
+install -m644 /etc/pacman.d/mirrorlist "$target/etc/pacman.d/mirrorlist"
+install -m644 /etc/resolv.conf "$target/etc/resolv.conf"
+in_target() { arch-chroot -r "$target" "$@"; }
 
-install -d "$source_root/etc/pacman.d/hooks"
-ln -sfn /dev/null "$source_root/etc/pacman.d/hooks/90-mkinitcpio-install.hook"
-# Chroot transactions need the same sandbox bypass the upstream ISO builder uses.
-install -d "$source_root/usr/local/bin"
-printf '#!/bin/sh\nexec /usr/bin/pacman --disable-sandbox "$@"\n' > "$source_root/usr/local/bin/pacman"
-chmod 755 "$source_root/usr/local/bin/pacman"
-arch_root env PATH=/usr/local/bin:/usr/bin OMARCHY_MIRROR=stable MISE_OFFLINE=1 \
-  /usr/bin/omarchy-apply-system --defer-provisioning --first-install
-rm "$source_root/usr/local/bin/pacman"
+printf 'PARTLABEL=%s / ext4 defaults,x-systemd.growfs 0 1\n' "$partlabel" > "$target/etc/fstab"
+printf 'arch-sheng\n' > "$target/etc/hostname"
+install -d "$target/etc/sheng" "$target/var/cache/sheng/repo" "$target/usr/share/sheng"
+printf '%s\n' "$partlabel" > "$target/etc/sheng/partlabel"
+cp -a /work/dist/packages/. "$target/var/cache/sheng/repo/"
+install -m644 /work/dist/packages/sheng.{asc,fingerprint} "$target/usr/share/sheng/"
+fingerprint=$(< /work/dist/packages/sheng.fingerprint)
+[[ $fingerprint =~ ^[A-F0-9]{40}$ ]]
+write_repo() {
+  printf '[sheng]\nSigLevel = Required DatabaseRequired\nServer = %s\n' "${1%/}" > "$target/etc/pacman.d/sheng.conf"
+}
+write_repo "$local_repo"
+printf '\nInclude = /etc/pacman.d/sheng.conf\n' >> "$target/etc/pacman.conf"
+in_target pacman-key --init
+in_target pacman-key --populate archlinuxarm
+in_target pacman-key --add /usr/share/sheng/sheng.asc
+in_target pacman-key --lsign-key "$fingerprint"
 
-install -Dm644 "$omarchy/install/provisioning/omarchy-provision-owner.service" \
-  "$source_root/etc/systemd/system/omarchy-provision-owner.service"
-install -d "$source_root/var/lib/omarchy/provisioning"
-touch "$source_root/var/lib/omarchy/provisioning/pending"
-chroot "$source_root" systemctl enable omarchy-provision-owner.service
-# The image uses ext4. Its fallback is supplied by U-Boot.
-chroot "$source_root" systemctl disable snapper-cleanup.timer limine-snapper-sync.service
-rm -f "$source_root/etc/snapper/configs/root" "$source_root/etc/conf.d/snapper"
-# Ensure fstab exists for the conversion step even if the official seed omitted it.
-touch "$source_root/etc/fstab"
-
-firmware=-
 if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
-  pacman --noconfirm --disable-sandbox -S --needed base-devel
   useradd -m builder
   cp -r packages/sheng-firmware "$work/firmware"
   chmod 755 "$work"
@@ -85,14 +67,35 @@ if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
     cd "$work/firmware"
     runuser -u builder -- makepkg --noconfirm
   )
-  archives=("$work/firmware/"*.pkg.tar.*)
-  firmware=${archives[0]}
+  install -d "$target/var/cache/sheng/firmware"
+  install -m644 "$work/firmware/"*.pkg.tar.* "$target/var/cache/sheng/firmware/"
+  archives=("$target/var/cache/sheng/firmware/"*.pkg.tar.*)
+  in_target pacman -U --noconfirm --disable-sandbox "${archives[0]#"$target"}"
+  rm -r "$target/var/cache/sheng/firmware"
 fi
 
-fingerprint=$(< "$SHENG_BUILD_REPO/sheng.fingerprint")
+in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp
+in_target sheng-boot install
+if [[ $repo != "$local_repo" ]]; then
+  write_repo "$repo"
+  rm -r "$target/var/cache/sheng/repo"
+fi
+
+# Generate per-device signing trust and set the initial password on the
+# physical console. The image ships with a locked root account.
+install -d "$target/etc/systemd/system/getty@tty1.service.d"
+cat > "$target/etc/systemd/system/getty@tty1.service.d/sheng-first-login.conf" <<'UNIT'
+[Service]
+ExecStartPre=/usr/bin/bash -ec 'test -e /var/lib/sheng/console-initialized || { /usr/bin/passwd root </dev/tty1 >/dev/tty1 2>&1; touch /var/lib/sheng/console-initialized; }'
+UNIT
+chroot "$target" systemctl enable sheng-keyring.service NetworkManager.service systemd-resolved.service xiaomi-sheng-thp.service
+ln -sfn /run/systemd/resolve/stub-resolv.conf "$target/etc/resolv.conf"
+in_target gpgconf --homedir /etc/pacman.d/gnupg --kill all
+rm -r "$target/etc/pacman.d/gnupg"
+truncate -s 0 "$target/etc/machine-id"
+umount "$target"
+e2fsck -fn "$image"
 install -d dist/image
-scripts/build-rootfs-image "$source_root" "$work/sheng-root.img" 20G - "$partlabel" \
-  "$repo" "$SHENG_BUILD_REPO/sheng.asc" "$fingerprint" "$firmware"
-zstd -T0 -6 --rm "$work/sheng-root.img" -o "dist/image/rootfs-$partlabel.img.zst"
+zstd -T0 -6 "$image" -o "dist/image/rootfs-$partlabel.img.zst"
 (cd dist/image && sha256sum ./*.img.zst > SHA256SUMS)
 chown -R "$BUILD_UID:$BUILD_GID" dist/image

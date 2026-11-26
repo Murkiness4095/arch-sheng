@@ -1,4 +1,4 @@
-name: Omarchy Sheng build implementation
+name: Arch Sheng build implementation
 
 on:
   workflow_call:
@@ -85,7 +85,7 @@ jobs:
         with:
           name: sheng-pacman-repository
           path: dist/packages
-      - name: Build the Omarchy root filesystem
+      - name: Build the Arch Linux ARM root filesystem
         env:
           SHENG_REPO_URL: ${{ github.ref == 'refs/heads/main' && vars.SHENG_REPO_URL || '' }}
           SHENG_WITH_FIRMWARE: ${{ inputs.include_firmware }}
