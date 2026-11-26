@@ -51,7 +51,17 @@ jobs:
         run: git apply ../patches/denial/0001-cycle-supported-power-profiles.patch
       - name: Prepare the pinned Flutter toolchain
         working-directory: denial-source
-        run: tools/denial-pc bootstrap
+        run: |
+          lock=prebuilt/flutter-engine/SOURCE_LOCK.json
+          repository=$(jq -er '.flutter.repository' "$lock")
+          revision=$(jq -er '.flutter.revision' "$lock")
+          sdk="$HOME/.cache/denial/pc-dependencies/flutter"
+          mkdir -p "$sdk"
+          if [[ $(git -C "$sdk" rev-parse HEAD 2>/dev/null || true) != "$revision" ]]; then
+            git -C "$sdk" init
+            git -C "$sdk" fetch --depth=1 "$repository" "$revision"
+            git -C "$sdk" checkout --detach FETCH_HEAD
+          fi
       - name: Build the Denial shell
         working-directory: denial-source
         run: tools/denial-pc bundle
