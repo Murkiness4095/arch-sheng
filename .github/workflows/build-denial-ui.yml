@@ -1,0 +1,67 @@
+name: Build Denial ARM64 UI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: denial-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 350
+    env:
+      DENIAL_PC_BUNDLE: ${{ runner.temp }}/denial-arm64-ui
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: http.version
+      GIT_CONFIG_VALUE_0: HTTP/1.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: denialwm/denial
+          ref: 9bb2c22a5a191f8c90f47fd4d7907c0f425a6ebf
+          path: denial-source
+          persist-credentials: false
+      - name: Install Flutter engine build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            binutils build-essential curl jq libegl1-mesa-dev libfontconfig1-dev \
+            libgbm-dev libgtk-3-dev liblzma-dev libx11-dev libxkbcommon-dev \
+            ninja-build pkg-config python3 rsync unzip xz-utils zip
+          df -h .
+      - name: Restore the Flutter SDK and Dart packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/denial/pc-dependencies/flutter
+            ~/.pub-cache
+          key: denial-flutter-sdk-${{ runner.arch }}-${{ hashFiles('denial-source/prebuilt/flutter-engine/SOURCE_LOCK.json', 'denial-source/**/pubspec.lock') }}
+      - name: Apply the Mobile power profile fix
+        working-directory: denial-source
+        run: git apply ../patches/denial/0001-cycle-supported-power-profiles.patch
+      - name: Prepare the pinned Flutter toolchain
+        working-directory: denial-source
+        run: tools/denial-pc bootstrap
+      - name: Build the Denial shell
+        working-directory: denial-source
+        run: tools/denial-pc bundle
+      - name: Verify the ARM64 UI bundle
+        working-directory: ${{ env.DENIAL_PC_BUNDLE }}
+        run: |
+          test -s data/flutter_assets/AssetManifest.bin
+          readelf -h lib/libapp.so | grep -F AArch64
+          readelf -h lib/libflutter_engine.so | grep -F AArch64
+          find data lib -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: denial-0.6.10-sheng-arm64-ui
+          path: ${{ env.DENIAL_PC_BUNDLE }}
+          if-no-files-found: error
