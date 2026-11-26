@@ -6,7 +6,7 @@
 
 ## GitHub Actions
 
-推送到 `main` 会触发一条 ARM64 构建，先生成一次软件包，再并行组装单系统和双系统镜像。下列两个工作流也可独立手动运行。默认包含设备固件。
+推送到 `main` 会由单系统工作流触发一条 ARM64 构建，先生成一次软件包，再并行组装单系统和双系统镜像。下列两个工作流也可独立手动运行。默认包含设备固件。
 
 | 工作流 | 根分区 | 镜像产物 |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新
 
 ## 桌面配置
 
-自动触发的构建使用 TTY。其余桌面从任一工作流的 **Run workflow** 菜单选择。
+自动触发的构建使用 TTY。手动运行时，`profile` 提供 TTY、GNOME、KDE、Niri 和 Denial。KDE 可勾选 `plasma_mobile`，Denial 的 `denial_mobile` 默认勾选，取消即构建桌面模式。两个开关只对各自的桌面有效。
 
 - Niri 镜像默认启动 Noctalia。Super+Space 打开 Noctalia 启动器，Super+D 打开 Fuzzel，Super+S 打开控制中心，Super+Enter 打开终端，Super+Q 关闭窗口，Super+O 打开概览。方向键用于切换窗口，按住 Shift 移动窗口，Page Up / Page Down 切换工作区。完整配置随用户模板安装到 `~/.config/niri/config.kdl`。
 - `kde` 安装 Plasma Desktop。`plasma-mobile` 从同一个 Arch Linux ARM 软件源安装触屏 shell 和屏幕键盘，登录时预选 Plasma Mobile。两者各自构建镜像，共用 KWin、Plasma Workspace 和设备软件包。
