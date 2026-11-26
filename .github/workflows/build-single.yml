@@ -167,6 +167,7 @@ jobs:
     needs: packages
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       pages: write
       id-token: write
     environment:
@@ -177,10 +178,10 @@ jobs:
         with:
           name: sheng-pacman-repository
           path: repository
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: repository
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5.0.1
         id: deploy
       - name: Verify published index and signature
         env:

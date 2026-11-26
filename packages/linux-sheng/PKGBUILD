@@ -1,7 +1,7 @@
 # Device kernel for the Xiaomi Pad 6S Pro.
 pkgname=linux-sheng
 pkgver=7.3.4
-pkgrel=2
+pkgrel=3
 pkgdesc='Linux kernel, modules and device tree for Xiaomi Pad 6S Pro'
 arch=(aarch64)
 url=https://github.com/ianchb/sm8550-mainline
