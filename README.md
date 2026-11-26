@@ -35,7 +35,7 @@ Fork 可通过 GitHub Actions Secrets 设置自己的 `SHENG_SIGNING_KEY`，通�
 
 - Niri 镜像默认启动 Noctalia。Super+Space 打开 Noctalia 启动器，Super+D 打开 Fuzzel，Super+S 打开控制中心，Super+Enter 打开终端，Super+Q 关闭窗口，Super+O 打开概览。方向键用于切换窗口，按住 Shift 移动窗口，Page Up / Page Down 切换工作区。完整配置随用户模板安装到 `~/.config/niri/config.kdl`。
 - `kde` 安装 Plasma Desktop。`plasma-mobile` 从同一个 Arch Linux ARM 软件源安装触屏 shell 和屏幕键盘，登录时预选 Plasma Mobile。两者各自构建镜像，共用 KWin、Plasma Workspace 和设备软件包。
-- `denial` 使用 Denial 自带的 Flutter 桌面和状态栏。`denial-mobile` 使用同一个 aarch64 软件包，默认启用移动 shell、状态栏和屏幕键盘。两种模式都通过上游签名软件源更新。Droidloom 可按需安装。
+- `denial` 使用 Denial 自带的 Flutter 桌面和状态栏。`denial-mobile` 使用同一个 aarch64 软件包，默认启用移动 shell、状态栏和屏幕键盘。两种模式都通过上游签名软件源更新。CI 的 `include_droidloom` 可为这两种镜像预装 Droidloom 预览版。此选项默认关闭，上游 Droidloom 软件源的预览包通过 HTTPS 分发，暂未签名。现有系统也可以按 [Droidloom 安装文档](https://github.com/denialwm/droidloom/blob/main/docs/INSTALL.md) 安装。
 - 图形镜像预装 Firefox、Fcitx5、Rime 朙月拼音和 CJK 字体，用 Ctrl+Space 切换中英文。GNOME 继续使用原生 Wayland 文本输入，GNOME Shell 内的候选窗可能需要 Kimpanel 扩展。移动版保留会话自带的屏幕键盘。
 - 主分支发布的长期软件源也包含 Niri 镜像所用的 `noctalia`。
 

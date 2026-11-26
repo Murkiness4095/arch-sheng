@@ -16,6 +16,10 @@ on:
         description: Use the mobile shell for Denial
         type: boolean
         default: true
+      include_droidloom:
+        description: Include Droidloom preview for Denial (unsigned upstream packages)
+        type: boolean
+        default: false
       username:
         description: Regular user name
         type: string
@@ -43,6 +47,7 @@ jobs:
       profile: ${{ inputs.profile }}
       plasma_mobile: ${{ inputs.plasma_mobile }}
       denial_mobile: ${{ inputs.denial_mobile }}
+      include_droidloom: ${{ inputs.include_droidloom }}
       include_firmware: ${{ inputs.include_firmware }}
     secrets:
       SHENG_SIGNING_KEY: ${{ secrets.SHENG_SIGNING_KEY }}

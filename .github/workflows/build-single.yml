@@ -18,6 +18,10 @@ on:
         description: Use the mobile shell for Denial
         type: boolean
         default: true
+      include_droidloom:
+        description: Include Droidloom preview for Denial (unsigned upstream packages)
+        type: boolean
+        default: false
       username:
         description: Regular user name
         type: string
@@ -49,6 +53,10 @@ on:
         description: Use the mobile shell for Denial
         type: boolean
         default: true
+      include_droidloom:
+        description: Include Droidloom preview for Denial (unsigned upstream packages)
+        type: boolean
+        default: false
       username:
         description: Regular user name
         type: string
@@ -65,7 +73,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: image-${{ github.ref }}-${{ github.event_name }}-${{ inputs.partition || 'userdata' }}-${{ inputs.profile || 'tty' }}-${{ inputs.plasma_mobile }}-${{ inputs.denial_mobile }}-${{ inputs.include_firmware }}
+  group: image-${{ github.ref }}-${{ github.event_name }}-${{ inputs.partition || 'userdata' }}-${{ inputs.profile || 'tty' }}-${{ inputs.plasma_mobile }}-${{ inputs.denial_mobile }}-${{ inputs.include_firmware }}-${{ inputs.include_droidloom }}
   cancel-in-progress: false
 
 env:
@@ -229,6 +237,7 @@ jobs:
           SHENG_REPO_URL: ${{ github.ref == 'refs/heads/main' && vars.SHENG_REPO_URL || '' }}
           SHENG_USERNAME: ${{ inputs.username || 'sheng' }}
           SHENG_WITH_FIRMWARE: ${{ github.event_name == 'push' || inputs.include_firmware }}
+          SHENG_WITH_DROIDLOOM: ${{ inputs.include_droidloom }}
         run: |
           # The caller's dispatch event contains the form value. Read it here
           # to keep the password out of the step's printed environment.
@@ -238,7 +247,7 @@ jobs:
           docker run --rm --privileged --volume "$PWD:/work" --env SHENG_PROFILE \
             --env "BUILD_UID=$(id -u)" --env "BUILD_GID=$(id -g)" \
             --env SHENG_USERNAME --env SHENG_PASSWORD \
-            --env "SHENG_PARTLABEL=$PARTLABEL" --env SHENG_REPO_URL --env SHENG_WITH_FIRMWARE \
+            --env "SHENG_PARTLABEL=$PARTLABEL" --env SHENG_REPO_URL --env SHENG_WITH_FIRMWARE --env SHENG_WITH_DROIDLOOM \
             "$ARCH_ARM_IMAGE" /usr/bin/bash /work/scripts/ci-image
       - name: Assemble the flash bundle
         run: |

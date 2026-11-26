@@ -92,6 +92,10 @@ case "$profile" in
     ;;
   denial|denial-mobile)
     desktop=(denial/denial sheng/sheng-rotation vulkan-freedreno foot greetd greetd-agreety)
+    if [[ ${SHENG_WITH_DROIDLOOM:-false} == true ]]; then
+      printf "\n[droidloom]\nSigLevel = Never\nServer = https://denialwm.github.io/droidloom/\$arch\nCacheServer = https://github.com/denialwm/droidloom/releases/download/packages\n" >> "$target/etc/pacman.conf"
+      desktop+=(droidloom/droidloom-runtime droidloom/droidloom-image)
+    fi
     display_manager=greetd.service
     curl -fsSL --retry 3 https://denialwm.github.io/denial/denial-repo-key.asc -o "$work/denial.asc"
     expected=AE4108FA5E91E26BE0EE331E0F5B3AD16E023091
