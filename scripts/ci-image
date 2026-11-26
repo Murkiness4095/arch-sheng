@@ -91,7 +91,7 @@ case "$profile" in
     install -Dm644 profiles/niri/config.kdl "$target/etc/skel/.config/niri/config.kdl"
     ;;
   denial|denial-mobile)
-    desktop=(denial/denial vulkan-freedreno foot greetd greetd-agreety)
+    desktop=(denial/denial sheng/sheng-rotation vulkan-freedreno foot greetd greetd-agreety)
     display_manager=greetd.service
     curl -fsSL --retry 3 https://denialwm.github.io/denial/denial-repo-key.asc -o "$work/denial.asc"
     expected=AE4108FA5E91E26BE0EE331E0F5B3AD16E023091
@@ -107,7 +107,7 @@ case "$profile" in
 esac
 if [[ -n $display_manager ]]; then
   desktop+=(firefox noto-fonts noto-fonts-cjk pipewire-pulse wireplumber xdg-desktop-portal-gtk
-    bluez bluez-utils upower power-profiles-daemon
+    bluez bluez-utils upower power-profiles-daemon sheng/xiaomi-pen-status
     fcitx5 fcitx5-rime fcitx5-gtk fcitx5-qt fcitx5-configtool rime-luna-pinyin)
   skel=$target/etc/skel/.config
   install -Dm644 profiles/common/fcitx5-profile "$skel/fcitx5/profile"
@@ -175,6 +175,7 @@ TOML
     ;;
   denial|denial-mobile)
     in_target sheng-denial-login "$username"
+    in_target systemctl enable sheng-sensorspd.service steinerd.service
     ;;
 esac
 in_target sheng-boot install

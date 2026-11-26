@@ -1,0 +1,49 @@
+pkgname=sheng-rotation
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Sheng Qualcomm sensor transport and Denial orientation service'
+arch=(aarch64)
+url=https://github.com/denialwm/phonewave
+license=(MIT BSD-3-Clause LicenseRef-Vendor)
+depends=(dbus libyaml)
+makedepends=(rust)
+_phonewave=9fbd73cc78f97bf7694f2980bff54d519a1eb456
+_registry=199754bb37ae6d4706bd8d4b23e9e6fec2d959cc
+source=("phonewave-$_phonewave.tar.gz::https://codeload.github.com/denialwm/phonewave/tar.gz/$_phonewave"
+        'fastrpc-1.0.2.tar.gz::https://codeload.github.com/qualcomm/fastrpc/tar.gz/refs/tags/v1.0.2'
+        "sheng-sensors-$_registry.tar.gz::https://codeload.github.com/alghiffaryfa19/sheng-sensors-file/tar.gz/$_registry"
+        sheng-sensorspd.service steinerd-sheng.conf)
+sha256sums=(0d93318b988515494315aa8c0f03278ef3961e6793e92145c55f65b8acfd3708
+            0d188e2006b6f652734c1b2a1f60165dc964df67ec0f9ff81b9c451fc22cc8ca
+            e13ecfd87e50cee322517018dfe6e03b53a63790d8a9a40d450044400f9ebd55
+            a92c3a7803156198e501e78c454f12fc2b496e92f60fb50f896e5f8c22b78212 c2499059916a202c335ad8f1a7d707859976b2ac9064acdee137676d6eb7a1bc)
+
+prepare() {
+  # Match the Sheng accelerometer mount matrix used by the Debian/NixOS port.
+  sed -i "s/return Self::default();/return Self::NegX;/g" \
+    "phonewave-$_phonewave/services/sensors/steinerd/src/frame.rs"
+}
+
+build() {
+  cd "$srcdir/fastrpc-1.0.2"
+  autoreconf -fi
+  ./configure --prefix=/usr --with-config-base-dir=/var/lib/sheng-sensors
+  make
+  cd "$srcdir/phonewave-$_phonewave/services/sensors/steinerd"
+  make
+}
+
+package() {
+  cd "$srcdir/fastrpc-1.0.2/src"
+  install -Dm755 adsprpcd "$pkgdir/usr/lib/sheng-sensors/adsprpcd"
+  install -Dm755 .libs/libadsp_default_listener.so.1.* "$pkgdir/usr/lib/sheng-sensors/libadsp_default_listener.so.1"
+  install -Dm755 .libs/libadsprpc.so.1.* "$pkgdir/usr/lib/sheng-sensors/libadsprpc.so.1"
+  install -Dm644 ../LICENSE* "$pkgdir/usr/share/licenses/$pkgname/FastRPC"
+  cd "$srcdir/phonewave-$_phonewave/services/sensors/steinerd"
+  make install DESTDIR="$pkgdir"
+  install -Dm644 "$srcdir/sheng-sensorspd.service" "$pkgdir/usr/lib/systemd/system/sheng-sensorspd.service"
+  install -Dm644 "$srcdir/steinerd-sheng.conf" "$pkgdir/usr/lib/systemd/system/steinerd.service.d/10-sheng.conf"
+  install -d "$pkgdir/usr/share/sheng/sensors"
+  cp -r "$srcdir/sheng-sensors-file-$_registry/usr/share/qcom/." "$pkgdir/usr/share/sheng/sensors/"
+  sed -i 's|/usr/share/qcom|/var/lib/sheng-sensors|g' "$pkgdir/usr/share/sheng/sensors/sm8550/Xiaomi/sheng/vendor/etc/sensors/sns_reg_config"
+}

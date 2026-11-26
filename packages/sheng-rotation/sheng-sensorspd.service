@@ -1,0 +1,16 @@
+[Unit]
+Description=Serve Xiaomi Sheng sensor configuration to the Qualcomm DSP
+ConditionPathExists=|/dev/fastrpc-adsp
+ConditionPathExists=|/dev/fastrpc-adsp-secure
+
+[Service]
+Type=exec
+StateDirectory=sheng-sensors
+ExecStartPre=/usr/bin/cp -rn /usr/share/sheng/sensors/. /var/lib/sheng-sensors/
+Environment=LD_LIBRARY_PATH=/usr/lib/sheng-sensors
+ExecStart=/usr/lib/sheng-sensors/adsprpcd sensorspd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

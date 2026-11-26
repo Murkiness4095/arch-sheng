@@ -1,0 +1,17 @@
+pkgname=xiaomi-pen-status
+pkgver=0.2.3
+pkgrel=1
+pkgdesc='Xiaomi Focus Pen battery status and Bluetooth pairing helper'
+arch=(aarch64)
+url=https://github.com/ianchb/xiaomi-pen-status
+license=(GPL-2.0-only)
+depends=(qt6-base qt6-svg bluez 'xiaomi-sheng-thp>=0.3.9')
+options=(!strip)
+source=("$url/releases/download/v$pkgver/${pkgname}_${pkgver}_arm64.deb")
+noextract=("${pkgname}_${pkgver}_arm64.deb")
+sha256sums=(1d3d47b6009279470fd18918ed25391f103ce22e956bf54f4f7668a4bace9841)
+
+package() {
+  bsdtar -xOf "${pkgname}_${pkgver}_arm64.deb" data.tar.xz |
+    bsdtar -xf - -C "$pkgdir"
+}

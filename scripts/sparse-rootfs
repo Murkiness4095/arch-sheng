@@ -9,7 +9,12 @@ fi
 image=$1
 output=$2
 
-e2fsck -fn "$image"
+if e2fsck -fp "$image"; then
+  :
+else
+  status=$?
+  (( status == 1 )) || exit "$status"
+fi
 geometry() {
   dumpe2fs -h "$image" 2>/dev/null |
     awk '/^Block count:/ { count=$3 } /^Block size:/ { size=$3 }

@@ -24,7 +24,7 @@ if [[ $kernel == true ]]; then
   dependencies+=(bc bison ccache flex gettext kmod libelf openssl pahole perl python zstd)
 fi
 if [[ $device == true ]]; then
-  dependencies+=(meson ninja pkgconf protobuf python glib2 libqmi protobuf-c)
+  dependencies+=(meson ninja pkgconf protobuf python glib2 libqmi protobuf-c rust libyaml)
 fi
 if [[ $niri == true ]]; then
   mapfile -t noctalia_dependencies < <(
@@ -60,6 +60,8 @@ if [[ $device == true ]]; then
   pacman --noconfirm --disable-sandbox -U /work/dist/unsigned/device/libssc-*.pkg.tar.*
   build_package device xiaomi-sheng-thp
   build_package device sheng-devauth
+  build_package device xiaomi-pen-status
+  build_package device sheng-rotation
 fi
 if [[ $kernel == true ]]; then
   (
