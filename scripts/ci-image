@@ -46,7 +46,7 @@ mkdir "$work/bin"
 printf '#!/bin/sh\nexec /usr/bin/pacman --disable-sandbox "$@"\n' > "$work/bin/pacman"
 chmod 755 "$work/bin/pacman"
 PATH="$work/bin:$PATH" pacstrap -c -G -M "$target" \
-  base archlinuxarm-keyring e2fsprogs linux-firmware-qcom mesa networkmanager sudo vim
+  base archlinuxarm-keyring e2fsprogs fastfetch linux-firmware-qcom mesa networkmanager sudo vim
 install -m644 /etc/pacman.d/mirrorlist "$target/etc/pacman.d/mirrorlist"
 install -m644 /etc/resolv.conf "$target/etc/resolv.conf"
 in_target() { arch-chroot -r "$target" "$@"; }

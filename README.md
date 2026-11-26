@@ -27,6 +27,8 @@ Fork 可通过 GitHub Actions Secrets 设置自己的 `SHENG_SIGNING_KEY`，通�
 
 设备适配参考 [debian-sheng](https://github.com/ianchb/debian-sheng)，U-Boot 构建复用 [nixos-sheng](https://github.com/Murkiness4095/nixos-sheng)。
 
+所有镜像均预装 Fastfetch。登录后运行 `fastfetch` 即可查看系统信息。
+
 ## 桌面配置
 
 自动触发的构建使用 TTY。手动运行时，`profile` 提供 TTY、GNOME、KDE、Niri 和 Denial。KDE 可勾选 `plasma_mobile`，Denial 的 `denial_mobile` 默认勾选，取消即构建桌面模式。两个开关只对各自的桌面有效。
