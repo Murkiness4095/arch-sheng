@@ -130,7 +130,7 @@ if [[ -n $display_manager ]]; then
     gnome|niri)
       printf 'QT_IM_MODULES="wayland;fcitx"\n' >> "$ime_environment"
       ;;
-    denial)
+    denial|denial-mobile)
       printf 'GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\n' >> "$ime_environment"
       ;;
   esac
@@ -178,6 +178,7 @@ user = "greeter"
 TOML
     ;;
   denial|denial-mobile)
+    printf "\nexport XMODIFIERS=@im=fcitx GTK_IM_MODULE=fcitx QT_IM_MODULE=fcitx\n" >> "$target/etc/denial/session.conf"
     in_target sheng-denial-login "$username"
     in_target systemctl enable sheng-sensorspd.service steinerd.service
     ;;
