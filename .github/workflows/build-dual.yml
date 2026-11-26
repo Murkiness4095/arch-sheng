@@ -17,13 +17,13 @@ on:
         type: boolean
         default: true
       username:
-        description: Regular user name (blank prompts on first boot)
+        description: Regular user name
         type: string
         default: sheng
       password:
-        description: Login password (visible in run inputs; blank sets it on first boot)
+        description: Login password (visible in run inputs)
         type: string
-        default: ''
+        default: sheng
       include_firmware:
         description: Include the device firmware overlay in the image
         type: boolean

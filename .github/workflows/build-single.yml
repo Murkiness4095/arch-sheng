@@ -19,13 +19,13 @@ on:
         type: boolean
         default: true
       username:
-        description: Regular user name (blank prompts on first boot)
+        description: Regular user name
         type: string
         default: sheng
       password:
-        description: Login password (visible in run inputs; blank sets it on first boot)
+        description: Login password (visible in run inputs)
         type: string
-        default: ''
+        default: sheng
       include_firmware:
         description: Include the device firmware overlay in the image
         type: boolean
@@ -50,7 +50,7 @@ on:
         type: boolean
         default: true
       username:
-        description: Regular user name (blank prompts on first boot)
+        description: Regular user name
         type: string
         default: sheng
       include_firmware:
@@ -243,13 +243,14 @@ jobs:
       - name: Build the Arch Linux ARM root filesystem
         env:
           SHENG_REPO_URL: ${{ github.ref == 'refs/heads/main' && vars.SHENG_REPO_URL || '' }}
-          SHENG_USERNAME: ${{ github.event_name == 'push' && 'sheng' || inputs.username }}
+          SHENG_USERNAME: ${{ inputs.username || 'sheng' }}
           SHENG_WITH_FIRMWARE: ${{ github.event_name == 'push' || inputs.include_firmware }}
         run: |
           # The caller's dispatch event contains the form value. Read it here
           # to keep the password out of the step's printed environment.
           export SHENG_PASSWORD
           SHENG_PASSWORD=$(jq -r '.inputs.password // ""' "$GITHUB_EVENT_PATH")
+          SHENG_PASSWORD=${SHENG_PASSWORD:-sheng}
           docker run --rm --privileged --volume "$PWD:/work" --env SHENG_PROFILE \
             --env "BUILD_UID=$(id -u)" --env "BUILD_GID=$(id -g)" \
             --env SHENG_USERNAME --env SHENG_PASSWORD \
