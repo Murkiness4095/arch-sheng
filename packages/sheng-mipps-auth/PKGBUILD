@@ -1,0 +1,27 @@
+pkgname=sheng-mipps-auth
+pkgver=0.21
+pkgrel=1
+pkgdesc='Xiaomi MiPPS charger authentication service for Sheng'
+arch=(aarch64)
+url=https://github.com/ianchb/xiaomi-mipps-auth
+license=(GPL-2.0-only)
+depends=(python glib2 util-linux systemd)
+_commit=9176efbdf276b874fc0a97912a914449a88155fb
+source=("xiaomi-mipps-auth-$_commit.tar.gz::https://codeload.github.com/ianchb/xiaomi-mipps-auth/tar.gz/$_commit"
+        skip-unsupported-before-role-swap.patch)
+sha256sums=(07db28a526b87eb64adaddac0230ab1449dc3753fbc3266e3d6769d4dbd683bc
+            937bac7c4e1b2545ec50fbe1e5c8b33c37c6678740edb16ceebaa08d31e361d5)
+
+prepare() {
+  cd "xiaomi-mipps-auth-$_commit"
+  patch -p1 < "$srcdir/skip-unsupported-before-role-swap.patch"
+  sed -i 's|/usr/libexec/xiaomi-mipps-auth|/usr/lib/sheng/xiaomi-mipps-auth|g' \
+    xiaomi-mipps-auth.service 90-xiaomi-mipps-auth.rules
+}
+
+package() {
+  cd "xiaomi-mipps-auth-$_commit"
+  install -Dm755 xiaomi-mipps-auth "$pkgdir/usr/lib/sheng/xiaomi-mipps-auth"
+  install -Dm644 xiaomi-mipps-auth.service "$pkgdir/usr/lib/systemd/system/xiaomi-mipps-auth.service"
+  install -Dm644 90-xiaomi-mipps-auth.rules "$pkgdir/usr/lib/udev/rules.d/90-xiaomi-mipps-auth.rules"
+}

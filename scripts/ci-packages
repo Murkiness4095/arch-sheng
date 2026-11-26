@@ -63,6 +63,7 @@ if [[ $device == true ]]; then
   build_package device xiaomi-pen-status
   build_package device sheng-rotation
   build_package device sheng-audio
+  build_package device sheng-mipps-auth
 fi
 if [[ $kernel == true ]]; then
   (

@@ -152,7 +152,7 @@ if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
   rm -r "$target/var/cache/sheng/firmware"
 fi
 
-in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp sheng/sheng-devauth "${desktop[@]}"
+in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp sheng/sheng-devauth sheng/sheng-mipps-auth "${desktop[@]}"
 case "$profile" in
   plasma-mobile)
     mobile_session=/usr/share/wayland-sessions/plasma-mobile.desktop
@@ -222,6 +222,7 @@ cat > "$target/etc/systemd/system/getty@tty1.service.d/sheng-first-login.conf" <
 ExecStartPre=/usr/bin/bash -ec '/usr/lib/sheng/first-login </dev/tty1 >/dev/tty1 2>&1'
 UNIT
 chroot "$target" systemctl enable sheng-keyring.service NetworkManager.service systemd-resolved.service xiaomi-sheng-thp.service
+chroot "$target" systemctl add-wants multi-user.target xiaomi-mipps-auth.service
 if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
   chroot "$target" systemctl enable sheng-devauth.service
 fi
