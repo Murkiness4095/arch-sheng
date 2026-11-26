@@ -16,6 +16,14 @@ on:
         description: Use the mobile shell for Denial
         type: boolean
         default: true
+      username:
+        description: Regular user name (blank prompts on first boot)
+        type: string
+        default: sheng
+      password:
+        description: Login password (visible in run inputs; blank sets it on first boot)
+        type: string
+        default: ''
       include_firmware:
         description: Include the device firmware overlay in the image
         type: boolean
@@ -31,6 +39,7 @@ jobs:
     uses: ./.github/workflows/build-single.yml
     with:
       partition: linux
+      username: ${{ inputs.username }}
       profile: ${{ inputs.profile }}
       plasma_mobile: ${{ inputs.plasma_mobile }}
       denial_mobile: ${{ inputs.denial_mobile }}

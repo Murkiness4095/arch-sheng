@@ -13,7 +13,7 @@
 | [单系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-single.yml) | `userdata` | `rootfs-userdata-<profile>`、`uboot-userdata` |
 | [双系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-dual.yml) | `linux` | `rootfs-linux-<profile>`、`uboot-linux` |
 
-镜像带 SHA-256 校验文件。双系统布局参考 [nixos-sheng 的 Android A 槽 / Linux B 槽](https://github.com/Murkiness4095/nixos-sheng)，已有 Linux 系统如果占用同一个分区，刷写会覆盖它。首次启动准备 USB 键盘，在 TTY1 创建可使用 sudo 的普通账户。桌面版随后进入图形登录。联网可用 `nmtui`。
+镜像带 SHA-256 校验文件。双系统布局参考 [nixos-sheng 的 Android A 槽 / Linux B 槽](https://github.com/Murkiness4095/nixos-sheng)，已有 Linux 系统如果占用同一个分区，刷写会覆盖它。默认用户为 `sheng`，在首次启动时用 USB 键盘到 TTY1 设置密码。桌面版随后进入图形登录。手动构建可以直接填写 `username` 和 `password`。密码留空时首次启动设置，用户名也留空时首次启动创建账户。填写的密码会出现在 Actions 运行参数中，请勿用它构建公开分发的镜像。联网可用 `nmtui`。
 
 ## 内核滚动更新
 

@@ -5,6 +5,16 @@ repo=${SHENG_REPO_URL:-file:///var/cache/sheng/repo}
 local_repo=file:///var/cache/sheng/repo
 partlabel=${SHENG_PARTLABEL:-linux}
 profile=${SHENG_PROFILE:-tty}
+username=${SHENG_USERNAME:-}
+password=${SHENG_PASSWORD:-}
+if [[ -n $username && ! $username =~ ^[a-z][a-z0-9_-]{0,30}$ || $username == root ]]; then
+  echo 'Choose a non-root username with lowercase letters, digits, underscores or hyphens.' >&2
+  exit 1
+fi
+if [[ -n $password && ( -z $username || $password == *$'\n'* || $password == *$'\r'* ) ]]; then
+  echo 'A build-time password requires a username and must fit on one line.' >&2
+  exit 1
+fi
 [[ $partlabel == linux || $partlabel == userdata ]]
 [[ $repo == "$local_repo" || $repo =~ ^https://[^[:space:]\#]+$ ]]
 
@@ -167,6 +177,22 @@ if [[ -n $display_manager ]]; then
   chroot "$target" systemctl enable "$display_manager"
   touch "$target/etc/sheng/graphical"
 fi
+if [[ -n $username ]]; then
+  if in_target getent passwd "$username" >/dev/null; then
+    echo "The username '$username' is already reserved by the image." >&2
+    exit 1
+  fi
+  in_target useradd -m -G wheel -s /usr/bin/bash "$username"
+  printf '%s\n' "$username" > "$target/var/lib/sheng/first-user"
+  if [[ -n $password ]]; then
+    printf '%s:%s\n' "$username" "$password" | in_target chpasswd
+    touch "$target/var/lib/sheng/console-initialized"
+    if [[ -n $display_manager ]]; then
+      chroot "$target" systemctl set-default graphical.target
+    fi
+  fi
+fi
+unset password SHENG_PASSWORD
 install -d "$target/etc/systemd/system/getty@tty1.service.d"
 cat > "$target/etc/systemd/system/getty@tty1.service.d/sheng-first-login.conf" <<'UNIT'
 [Service]
