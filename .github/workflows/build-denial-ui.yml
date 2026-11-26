@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 350
     env:
-      DENIAL_PC_BUNDLE: ${{ runner.temp }}/denial-arm64-ui
       GIT_CONFIG_COUNT: '1'
       GIT_CONFIG_KEY_0: http.version
       GIT_CONFIG_VALUE_0: HTTP/1.1
@@ -29,6 +28,8 @@ jobs:
           ref: 9bb2c22a5a191f8c90f47fd4d7907c0f425a6ebf
           path: denial-source
           persist-credentials: false
+      - name: Set the bundle output directory
+        run: echo "DENIAL_PC_BUNDLE=$RUNNER_TEMP/denial-arm64-ui" >> "$GITHUB_ENV"
       - name: Install Flutter engine build dependencies
         run: |
           sudo apt-get update
