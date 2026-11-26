@@ -32,7 +32,7 @@ Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新
 - Niri 镜像默认启动 Noctalia。Super+Space 打开 Noctalia 启动器，Super+D 打开 Fuzzel，Super+S 打开控制中心，Super+Enter 打开终端，Super+Q 关闭窗口，Super+O 打开概览。方向键用于切换窗口，按住 Shift 移动窗口，Page Up / Page Down 切换工作区。完整配置随用户模板安装到 `~/.config/niri/config.kdl`。
 - `kde` 安装 Plasma Desktop。`plasma-mobile` 从同一个 Arch Linux ARM 软件源安装触屏 shell 和屏幕键盘，登录时预选 Plasma Mobile。两者各自构建镜像，共用 KWin、Plasma Workspace 和设备软件包。
 - `denial` 使用 Denial 自带的 Flutter 桌面和状态栏。`denial-mobile` 使用同一个 aarch64 软件包，默认启用移动 shell、状态栏和屏幕键盘。两种模式都通过上游签名软件源更新。Droidloom 可按需安装。
-- 图形镜像预装 Fcitx5、Rime 朙月拼音和 CJK 字体，用 Ctrl+Space 切换中英文。GNOME 继续使用原生 Wayland 文本输入，GNOME Shell 内的候选窗可能需要 Kimpanel 扩展。移动版保留会话自带的屏幕键盘。
+- 图形镜像预装 Firefox、Fcitx5、Rime 朙月拼音和 CJK 字体，用 Ctrl+Space 切换中英文。GNOME 继续使用原生 Wayland 文本输入，GNOME Shell 内的候选窗可能需要 Kimpanel 扩展。移动版保留会话自带的屏幕键盘。
 - 如果使用长期设备软件仓库并发布 Niri 镜像，请用 Niri 构建的仓库产物，以便仓库同时包含 `noctalia`。
 
 ## 构建缓存

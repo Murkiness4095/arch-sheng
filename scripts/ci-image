@@ -96,7 +96,7 @@ case "$profile" in
   *) echo "Unknown desktop profile: $profile" >&2; exit 1 ;;
 esac
 if [[ -n $display_manager ]]; then
-  desktop+=(noto-fonts noto-fonts-cjk pipewire-pulse wireplumber xdg-desktop-portal-gtk
+  desktop+=(firefox noto-fonts noto-fonts-cjk pipewire-pulse wireplumber xdg-desktop-portal-gtk
     fcitx5 fcitx5-rime fcitx5-gtk fcitx5-qt fcitx5-configtool rime-luna-pinyin)
   skel=$target/etc/skel/.config
   install -Dm644 profiles/common/fcitx5-profile "$skel/fcitx5/profile"
