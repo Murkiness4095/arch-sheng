@@ -38,7 +38,11 @@ prepare() {
 
 build() {
   cd "$_src"
-  make ARCH=arm64 LOCALVERSION= Image modules qcom/sm8550-xiaomi-sheng.dtb
+  local compiler=()
+  if [[ -n ${CCACHE_DIR:-} ]]; then
+    compiler=('CC=ccache gcc' 'HOSTCC=ccache gcc')
+  fi
+  make ARCH=arm64 LOCALVERSION= "${compiler[@]}" Image modules qcom/sm8550-xiaomi-sheng.dtb
 }
 
 package() {

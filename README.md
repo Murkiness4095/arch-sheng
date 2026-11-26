@@ -6,7 +6,7 @@
 
 ## GitHub Actions
 
-推送到 `main` 会触发两条独立的 ARM64 构建，也可分别手动运行。默认包含设备固件。
+推送到 `main` 会触发一条 ARM64 构建，先生成一次软件包，再并行组装单系统和双系统镜像。下列两个工作流也可独立手动运行。默认包含设备固件。
 
 | 工作流 | 根分区 | 镜像产物 |
 | --- | --- | --- |
@@ -32,3 +32,9 @@ Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新
 - Niri 镜像默认启动 Noctalia。Super+Space 打开启动器，Super+S 打开控制中心，Super+Enter 打开终端，Super+Q 关闭窗口，Super+O 打开概览。方向键用于切换窗口，按住 Shift 移动窗口，Page Up / Page Down 切换工作区。完整配置随用户模板安装到 `~/.config/niri/config.kdl`。
 - Denial 使用自带的 Flutter 桌面和状态栏，随上游签名的 aarch64 软件源更新。Droidloom 建议等平板的 GPU 加速、Android 输入和休眠通过真机测试后按需安装。
 - 如果使用长期设备软件仓库并发布 Niri 镜像，请用 Niri 构建的仓库产物，以便仓库同时包含 `noctalia`。
+
+## 构建缓存
+
+主分支推送构建只打包和签名一次，两个镜像任务共用同一份签名软件仓库。手动构建也会从 Actions 缓存复用未签名内核包、设备包、Noctalia 包和对应布局的 U-Boot。软件包在当前运行中重新签名，签名密钥和已签名索引不会进入缓存。
+
+内核包缓存未命中时，构建仍会尝试复用 Linux 编译器缓存。软件包配方、构建脚本或固定构建容器有变化时会重新打包。遇到 Arch Linux ARM 上游工具链或库 ABI 变更时，可以更新仓库变量 `SHENG_PACKAGE_CACHE_EPOCH`，让下一次运行重建软件包与编译缓存。

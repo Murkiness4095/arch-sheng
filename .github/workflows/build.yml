@@ -8,7 +8,7 @@ on:
         type: string
         default: tty
       partition:
-        description: Root partition layout
+        description: Root partition layout (linux, userdata, or both)
         type: string
         required: true
       include_firmware:
@@ -24,8 +24,8 @@ permissions:
 
 env:
   ARCH_ARM_IMAGE: ghcr.io/menci/archlinuxarm@sha256:3e1074c407fc1a57c2a2117af6920c96a7cc906fa6f1f2da8a4a7fd3aa2c2f4e
-  PARTLABEL: ${{ inputs.partition }}
   SHENG_PROFILE: ${{ inputs.profile }}
+  PACKAGE_CACHE_EPOCH: ${{ vars.SHENG_PACKAGE_CACHE_EPOCH || '1' }}
 
 jobs:
   packages:
@@ -33,11 +33,54 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: Build aarch64 pacman packages
+      - name: Cache unsigned device packages
+        id: device
+        uses: actions/cache@v4
+        with:
+          path: dist/unsigned/device
+          key: device-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/arch-sheng/**', 'packages/libssc/**', 'packages/xiaomi-sheng-thp/**') }}
+      - name: Cache unsigned kernel
+        id: kernel
+        uses: actions/cache@v4
+        with:
+          path: dist/unsigned/kernel
+          key: kernel-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/linux-sheng/**') }}
+      - name: Cache unsigned Noctalia
+        if: inputs.profile == 'niri'
+        id: niri
+        uses: actions/cache@v4
+        with:
+          path: dist/unsigned/niri
+          key: niri-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/noctalia/**') }}
+      - name: Restore Linux compiler cache
+        if: steps.kernel.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: build/ccache
+          key: ccache-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-${{ hashFiles('scripts/ci-packages', 'packages/linux-sheng/**') }}
+          restore-keys: |
+            ccache-${{ runner.arch }}-${{ env.ARCH_ARM_IMAGE }}-${{ env.PACKAGE_CACHE_EPOCH }}-
+      - name: Build missing aarch64 packages
+        if: steps.device.outputs.cache-hit != 'true' || steps.kernel.outputs.cache-hit != 'true' || (inputs.profile == 'niri' && steps.niri.outputs.cache-hit != 'true')
+        env:
+          DEVICE_CACHE_HIT: ${{ steps.device.outputs.cache-hit }}
+          KERNEL_CACHE_HIT: ${{ steps.kernel.outputs.cache-hit }}
+          NIRI_CACHE_HIT: ${{ steps.niri.outputs.cache-hit }}
         run: |
-          docker run --rm --privileged --volume "$PWD:/work" --env SHENG_PROFILE \
+          components=()
+          if [[ $DEVICE_CACHE_HIT != true ]]; then components+=(device); fi
+          if [[ $KERNEL_CACHE_HIT != true ]]; then components+=(kernel); fi
+          if [[ $SHENG_PROFILE == niri && $NIRI_CACHE_HIT != true ]]; then components+=(niri); fi
+          docker run --rm --privileged --volume "$PWD:/work" \
             --env "BUILD_UID=$(id -u)" --env "BUILD_GID=$(id -g)" \
-            "$ARCH_ARM_IMAGE" /usr/bin/bash /work/scripts/ci-packages
+            "$ARCH_ARM_IMAGE" /usr/bin/bash /work/scripts/ci-packages "${components[@]}"
+      - name: Stage unsigned packages for signing
+        run: |
+          mkdir -p dist/packages
+          cp -- dist/unsigned/device/*.pkg.tar.* dist/unsigned/kernel/*.pkg.tar.* dist/packages/
+          if [[ $SHENG_PROFILE == niri ]]; then
+            cp -- dist/unsigned/niri/*.pkg.tar.* dist/packages/
+          fi
       - name: Sign the sheng package repository
         env:
           SHENG_SIGNING_KEY: ${{ github.ref == 'refs/heads/main' && secrets.SHENG_SIGNING_KEY || '' }}
@@ -58,22 +101,39 @@ jobs:
           if-no-files-found: error
 
   uboot:
+    strategy:
+      fail-fast: false
+      matrix:
+        partlabel: ${{ fromJSON(inputs.partition == 'both' && '["linux","userdata"]' || format('["{0}"]', inputs.partition)) }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
+    env:
+      PARTLABEL: ${{ matrix.partlabel }}
+      UBOOT_REFERENCE: github:Murkiness4095/nixos-sheng/2be57fe7da35b0b98963cc5da233ad6765d5c134
     steps:
+      - name: Cache the matching U-Boot image
+        id: uboot
+        uses: actions/cache@v4
+        with:
+          path: dist/uboot
+          key: uboot-v1-${{ runner.arch }}-${{ matrix.partlabel }}-${{ env.UBOOT_REFERENCE }}
       - uses: cachix/install-nix-action@v31
+        if: steps.uboot.outputs.cache-hit != 'true'
       - name: Build the pinned nixos-sheng U-Boot
+        if: steps.uboot.outputs.cache-hit != 'true'
         run: |
-          reference=github:Murkiness4095/nixos-sheng/2be57fe7da35b0b98963cc5da233ad6765d5c134
           case "$PARTLABEL" in
             linux) package=u-boot-dual ;;
             userdata) package=u-boot ;;
             *) exit 1 ;;
           esac
-          nix build "$reference#$package"
+          nix build "$UBOOT_REFERENCE#$package"
           mkdir -p dist/uboot
           cp result/boot.img "dist/uboot/uboot-$PARTLABEL.img"
           (cd dist/uboot && sha256sum ./*.img > SHA256SUMS)
+      - name: Verify the U-Boot image
+        working-directory: dist/uboot
+        run: sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: uboot-${{ env.PARTLABEL }}
@@ -82,8 +142,14 @@ jobs:
 
   image:
     needs: packages
+    strategy:
+      fail-fast: false
+      matrix:
+        partlabel: ${{ fromJSON(inputs.partition == 'both' && '["linux","userdata"]' || format('["{0}"]', inputs.partition)) }}
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
+    env:
+      PARTLABEL: ${{ matrix.partlabel }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

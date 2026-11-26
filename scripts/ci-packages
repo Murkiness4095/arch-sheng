@@ -1,36 +1,74 @@
 #!/usr/bin/bash
 set -euo pipefail
 cd /work
+device=false
+kernel=false
+niri=false
+for component in "$@"; do
+  case "$component" in
+    device) device=true ;;
+    kernel) kernel=true ;;
+    niri) niri=true ;;
+    *) echo "Unknown package component: $component" >&2; exit 1 ;;
+  esac
+done
+if [[ $device == false && $kernel == false && $niri == false ]]; then
+  exit 0
+fi
+
 pacman-key --init
 pacman-key --populate archlinuxarm
 printf 'Server = http://mirror.archlinuxarm.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
-pacman --noconfirm --disable-sandbox -Syu --needed base-devel bc bison flex gettext kmod libelf \
-  openssl pahole perl python zstd meson ninja pkgconf protobuf glib2 libqmi protobuf-c
+dependencies=(base-devel)
+if [[ $kernel == true ]]; then
+  dependencies+=(bc bison ccache flex gettext kmod libelf openssl pahole perl python zstd)
+fi
+if [[ $device == true ]]; then
+  dependencies+=(meson ninja pkgconf protobuf python glib2 libqmi protobuf-c)
+fi
+if [[ $niri == true ]]; then
+  mapfile -t noctalia_dependencies < <(
+    depends=()
+    makedepends=()
+    source packages/noctalia/PKGBUILD
+    printf '%s\n' "${depends[@]}" "${makedepends[@]}"
+  )
+  dependencies+=("${noctalia_dependencies[@]}")
+fi
+pacman --noconfirm --disable-sandbox -Syu --needed "${dependencies[@]}"
 useradd -m builder
 stage=$(mktemp -d /tmp/sheng-build.XXXXXXXX)
 cp -r packages/. "$stage/"
 chown -R builder:builder "$stage"
-dest=/work/dist/packages
-install -d "$dest"
 
-packages=(arch-sheng linux-sheng libssc xiaomi-sheng-thp)
-if [[ ${SHENG_PROFILE:-tty} == niri ]]; then
-  (
-    depends=()
-    makedepends=()
-    source /work/packages/noctalia/PKGBUILD
-    pacman --noconfirm --disable-sandbox -S --needed "${depends[@]}" "${makedepends[@]}"
-  )
-  packages+=(noctalia)
-fi
-for package in "${packages[@]}"; do
+build_package() {
+  local component=$1 package=$2 dest="/work/dist/unsigned/$1"
+  install -d "$dest"
   (
     cd "$stage/$package"
-    runuser -u builder -- env MAKEFLAGS="-j$(nproc)" makepkg --noconfirm --nodeps
+    runuser -u builder -- env MAKEFLAGS="-j$(nproc)" \
+      CCACHE_DIR="${CCACHE_DIR:-}" CCACHE_BASEDIR="$stage" CCACHE_MAXSIZE=750M \
+      makepkg --noconfirm --nodeps
     cp -- ./*.pkg.tar.* "$dest/"
-    if [[ $package == libssc ]]; then
-      pacman --noconfirm --disable-sandbox -U ./*.pkg.tar.*
-    fi
   )
-done
-chown -R "$BUILD_UID:$BUILD_GID" /work/dist
+  chown -R "$BUILD_UID:$BUILD_GID" "$dest"
+}
+
+if [[ $device == true ]]; then
+  build_package device arch-sheng
+  build_package device libssc
+  pacman --noconfirm --disable-sandbox -U /work/dist/unsigned/device/libssc-*.pkg.tar.*
+  build_package device xiaomi-sheng-thp
+fi
+if [[ $kernel == true ]]; then
+  (
+    export CCACHE_DIR=/work/build/ccache
+    install -d "$CCACHE_DIR"
+    chown -R builder:builder "$CCACHE_DIR"
+    trap 'chown -R "$BUILD_UID:$BUILD_GID" "$CCACHE_DIR"' EXIT
+    build_package kernel linux-sheng
+  )
+fi
+if [[ $niri == true ]]; then
+  build_package niri noctalia
+fi
