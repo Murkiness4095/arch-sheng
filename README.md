@@ -10,10 +10,10 @@
 
 | 工作流 | 根分区 | 镜像产物 |
 | --- | --- | --- |
-| [单系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-single.yml) | `userdata` | `rootfs-userdata-<profile>`、`uboot-userdata` |
-| [双系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-dual.yml) | `linux` | `rootfs-linux-<profile>`、`uboot-linux` |
+| [单系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-single.yml) | `userdata` | `flash-userdata-<profile>` |
+| [双系统](https://github.com/Murkiness4095/arch-sheng/actions/workflows/build-dual.yml) | `linux` | `flash-linux-<profile>` |
 
-镜像带 SHA-256 校验文件。双系统布局参考 [nixos-sheng 的 Android A 槽 / Linux B 槽](https://github.com/Murkiness4095/nixos-sheng)，已有 Linux 系统如果占用同一个分区，刷写会覆盖它。镜像在构建时创建普通用户，默认用户名和密码都是 `sheng`。手动构建可以直接填写 `username` 和 `password`，留空使用默认值。图形镜像首次启动会进入图形登录。填写的密码会出现在 Actions 运行参数中。联网可用 `nmtui`。
+下载对应的 `flash-*` ZIP，解压一次即可得到可直接刷写的 Android sparse rootfs `.img`、配套 U-Boot `.img` 和 `SHA256SUMS`。刷机只需下载这个 ZIP。双系统布局参考 [nixos-sheng 的 Android A 槽 / Linux B 槽](https://github.com/Murkiness4095/nixos-sheng)，已有 Linux 系统如果占用同一个分区，刷写会覆盖它。镜像在构建时创建普通用户，默认用户名和密码都是 `sheng`。手动构建可以直接填写 `username` 和 `password`，留空使用默认值。图形镜像首次启动会进入图形登录。填写的密码会出现在 Actions 运行参数中。联网可用 `nmtui`。
 
 ## 内核滚动更新
 

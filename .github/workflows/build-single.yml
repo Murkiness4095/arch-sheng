@@ -183,17 +183,24 @@ jobs:
             cmp "repository/$file" "$RUNNER_TEMP/$file"
           done
 
-  uboot:
+  image:
+    needs: [packages, publish]
+    if: ${{ !cancelled() && needs.packages.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
         partlabel: ${{ fromJSON(github.event_name == 'push' && '["linux","userdata"]' || format('["{0}"]', inputs.partition || 'userdata')) }}
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
+    timeout-minutes: 75
     env:
       PARTLABEL: ${{ matrix.partlabel }}
       UBOOT_REFERENCE: github:Murkiness4095/nixos-sheng/2be57fe7da35b0b98963cc5da233ad6765d5c134
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sheng-pacman-repository
+          path: dist/packages
       - name: Cache the matching U-Boot image
         id: uboot
         uses: actions/cache@v4
@@ -217,29 +224,6 @@ jobs:
       - name: Verify the U-Boot image
         working-directory: dist/uboot
         run: sha256sum -c SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: uboot-${{ env.PARTLABEL }}
-          path: dist/uboot/
-          if-no-files-found: error
-
-  image:
-    needs: [packages, publish]
-    if: ${{ !cancelled() && needs.packages.result == 'success' && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        partlabel: ${{ fromJSON(github.event_name == 'push' && '["linux","userdata"]' || format('["{0}"]', inputs.partition || 'userdata')) }}
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 60
-    env:
-      PARTLABEL: ${{ matrix.partlabel }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: sheng-pacman-repository
-          path: dist/packages
       - name: Build the Arch Linux ARM root filesystem
         env:
           SHENG_REPO_URL: ${{ github.ref == 'refs/heads/main' && vars.SHENG_REPO_URL || '' }}
@@ -256,9 +240,13 @@ jobs:
             --env SHENG_USERNAME --env SHENG_PASSWORD \
             --env "SHENG_PARTLABEL=$PARTLABEL" --env SHENG_REPO_URL --env SHENG_WITH_FIRMWARE \
             "$ARCH_ARM_IMAGE" /usr/bin/bash /work/scripts/ci-image
+      - name: Assemble the flash bundle
+        run: |
+          cp -- "dist/uboot/uboot-$PARTLABEL.img" dist/image/
+          (cd dist/image && sha256sum ./*.img > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
-          name: rootfs-${{ env.PARTLABEL }}-${{ env.SHENG_PROFILE }}
+          name: flash-${{ env.PARTLABEL }}-${{ env.SHENG_PROFILE }}
           path: dist/image/
-          compression-level: 0
+          compression-level: 6
           if-no-files-found: error

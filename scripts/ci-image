@@ -21,7 +21,7 @@ fi
 pacman-key --init
 pacman-key --populate archlinuxarm
 printf 'Server = http://mirror.archlinuxarm.org/$arch/$repo\n' >/etc/pacman.d/mirrorlist
-pacman --noconfirm --disable-sandbox -Syu --needed arch-install-scripts curl e2fsprogs gnupg zstd
+pacman --noconfirm --disable-sandbox -Syu --needed android-tools arch-install-scripts curl e2fsprogs gnupg
 if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
   pacman --noconfirm --disable-sandbox -S --needed base-devel
 fi
@@ -206,6 +206,5 @@ truncate -s 0 "$target/etc/machine-id"
 umount "$target"
 e2fsck -fn "$image"
 install -d dist/image
-zstd -T0 -6 "$image" -o "dist/image/rootfs-$partlabel-$profile.img.zst"
-(cd dist/image && sha256sum ./*.img.zst > SHA256SUMS)
+img2simg "$image" "dist/image/rootfs-$partlabel-$profile.img"
 chown -R "$BUILD_UID:$BUILD_GID" dist/image
