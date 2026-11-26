@@ -19,7 +19,9 @@
 
 Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新。安装新版 `linux-sheng` 后，pacman 钩子部署 Image、DTB 和模块，构建 initramfs，并写入 extlinux 启动项。U-Boot 平板按键菜单提供旧内核入口。确认新内核可用后执行 `sudo sheng-boot confirm`，启动项生成失败可用 `sudo sheng-boot install` 重试。
 
-每次 CI 都生成 `sheng-pacman-repository` 产物。没有配置长期软件源时，镜像内置本次构建的签名仓库，只适合首启测试。要让已安装系统持续收到设备更新，在 GitHub 仓库设置长期使用的 `SHENG_SIGNING_KEY` secret 和 `SHENG_REPO_URL` variable，并把同一构建的仓库文件部署到该 HTTPS 地址。后续版本使用同一签名密钥，内核有变更时递增 `pkgver` 或 `pkgrel`。部署时先发布新版包与签名，再切换仓库索引。设备发布地址需要和旧 Omarchy 仓库区分开。
+主分支构建使用长期密钥签名，并把 `sheng-pacman-repository` 发布到 [Arch Sheng 软件源](https://murkiness4095.github.io/arch-sheng/sheng.db)。新镜像预装公钥和软件源地址。公钥指纹为 `A65F04B9A574102C80A6419C2514325F46504FB2`。内核有变更时递增 `pkgver` 或 `pkgrel`，平板即可通过 `sudo pacman -Syu` 收到新版。
+
+Fork 可通过 GitHub Actions Secrets 设置自己的 `SHENG_SIGNING_KEY`，通过 Variables 设置 `SHENG_REPO_URL`。如果用 GitHub Pages 托管，选择 GitHub Actions 作为发布来源，再设置 `SHENG_PUBLISH_PAGES=true`。没有远程软件源配置的构建使用镜像内置的测试仓库。
 
 首轮真机验收依次检查 TTY 登录和联网、`pacman -Syu` 安装递增版本的内核、重启核对 `uname -r`，再从 U-Boot 启动旧内核验证回退。回退入口只切换内核和它的启动文件。
 
@@ -33,7 +35,7 @@ Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新
 - `kde` 安装 Plasma Desktop。`plasma-mobile` 从同一个 Arch Linux ARM 软件源安装触屏 shell 和屏幕键盘，登录时预选 Plasma Mobile。两者各自构建镜像，共用 KWin、Plasma Workspace 和设备软件包。
 - `denial` 使用 Denial 自带的 Flutter 桌面和状态栏。`denial-mobile` 使用同一个 aarch64 软件包，默认启用移动 shell、状态栏和屏幕键盘。两种模式都通过上游签名软件源更新。Droidloom 可按需安装。
 - 图形镜像预装 Firefox、Fcitx5、Rime 朙月拼音和 CJK 字体，用 Ctrl+Space 切换中英文。GNOME 继续使用原生 Wayland 文本输入，GNOME Shell 内的候选窗可能需要 Kimpanel 扩展。移动版保留会话自带的屏幕键盘。
-- 如果使用长期设备软件仓库并发布 Niri 镜像，请用 Niri 构建的仓库产物，以便仓库同时包含 `noctalia`。
+- 主分支发布的长期软件源也包含 Niri 镜像所用的 `noctalia`。
 
 ## 构建缓存
 
