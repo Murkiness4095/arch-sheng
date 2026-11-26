@@ -1,0 +1,21 @@
+pkgname=sheng-audio
+pkgver=1.0
+pkgrel=1
+pkgdesc='ALSA UCM profile for the Xiaomi Pad 6S Pro'
+arch=(any)
+url=https://gitlab.postmarketos.org/alghiffaryfa19/pmaports
+license=(MIT)
+depends=(alsa-ucm-conf)
+source=("$url/-/raw/sheng/device/testing/device-xiaomi-sheng/HiFi.conf"
+        Xiaomi-Pad6SPro.conf)
+sha256sums=(8f9e4ff6be501260622bb11c837ca4b2171010ec3e51ae9892f5a7186ce5dd81
+            db5b991692d47c00f926ec330c5e761f44fe30cfc5d9660780ee7be42c45dfd0)
+
+package() {
+  local profiles="$pkgdir/usr/share/alsa/ucm2"
+  install -Dm644 HiFi.conf "$profiles/Xiaomi/sheng/HiFi.conf"
+  install -Dm644 Xiaomi-Pad6SPro.conf "$profiles/Xiaomi/sheng/Xiaomi-Pad6SPro.conf"
+  install -d "$profiles/conf.d/sm8550"
+  ln -s ../../Xiaomi/sheng/Xiaomi-Pad6SPro.conf "$profiles/conf.d/sm8550/Xiaomi-Pad6SPro.conf"
+  ln -s Xiaomi-Pad6SPro.conf "$profiles/conf.d/sm8550/xiaomi-XiaomiPad6SPro12.4.conf"
+}
