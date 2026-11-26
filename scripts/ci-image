@@ -71,12 +71,16 @@ case "$profile" in
     desktop=(plasma-desktop plasma-workspace plasma-nm plasma-pa kde-gtk-config dolphin konsole sddm)
     display_manager=sddm.service
     ;;
+  plasma-mobile)
+    desktop=(plasma-mobile plasma-settings qmlkonsole dolphin xdg-desktop-portal-kde sddm)
+    display_manager=sddm.service
+    ;;
   niri)
     desktop=(niri sheng/noctalia foot xdg-desktop-portal-gnome xwayland-satellite sddm)
     display_manager=sddm.service
     install -Dm644 profiles/niri/config.kdl "$target/etc/skel/.config/niri/config.kdl"
     ;;
-  denial)
+  denial|denial-mobile)
     desktop=(denial/denial vulkan-freedreno foot sddm)
     display_manager=sddm.service
     curl -fsSL --retry 3 https://denialwm.github.io/denial/denial-repo-key.asc -o "$work/denial.asc"
@@ -112,6 +116,18 @@ if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
 fi
 
 in_target pacman -Syu --noconfirm --disable-sandbox --needed sheng/arch-sheng sheng/linux-sheng sheng/xiaomi-sheng-thp "${desktop[@]}"
+case "$profile" in
+  plasma-mobile)
+    mobile_session=/usr/share/wayland-sessions/plasma-mobile.desktop
+    [[ -f $target$mobile_session ]]
+    chroot "$target" install -d -o sddm -g sddm /var/lib/sddm
+    printf '[Last]\nSession=%s\n' "$mobile_session" > "$target/var/lib/sddm/state.conf"
+    chroot "$target" chown sddm:sddm /var/lib/sddm/state.conf
+    ;;
+  denial-mobile)
+    printf '\nDENIAL_SHELL_PROFILE=mobile\n' >> "$target/etc/denial/session.conf"
+    ;;
+esac
 in_target sheng-boot install
 if [[ $repo != "$local_repo" ]]; then
   write_repo "$repo"

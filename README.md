@@ -1,6 +1,6 @@
 # Arch Sheng
 
-小米平板 6S Pro（`sheng`）的 Arch Linux ARM 移植。使用 Arch Linux ARM 软件源和 `pacstrap` 生成 aarch64 基础系统，使用 `nixos-sheng` 的 U-Boot 从 ext4 分区启动。镜像可选 TTY、GNOME、KDE Plasma、Niri 或 Denial，均使用 NetworkManager。
+小米平板 6S Pro（`sheng`）的 Arch Linux ARM 移植。使用 Arch Linux ARM 软件源和 `pacstrap` 生成 aarch64 基础系统，使用 `nixos-sheng` 的 U-Boot 从 ext4 分区启动。镜像可选 TTY、GNOME、Plasma Desktop、Plasma Mobile、Niri、Denial Desktop 或 Denial Mobile，均使用 NetworkManager。
 
 之前的 Omarchy 版已保留在 [omarchy-archive](https://github.com/Murkiness4095/arch-sheng/tree/omarchy-archive) 标签。已有 Omarchy 安装要换成 Arch Linux ARM，需要按新系统重新安装。
 
@@ -30,7 +30,8 @@ Arch Linux ARM 软件包和设备内核使用同一个 `sudo pacman -Syu` 更新
 自动触发的构建使用 TTY。其余桌面从任一工作流的 **Run workflow** 菜单选择。
 
 - Niri 镜像默认启动 Noctalia。Super+Space 打开启动器，Super+S 打开控制中心，Super+Enter 打开终端，Super+Q 关闭窗口，Super+O 打开概览。方向键用于切换窗口，按住 Shift 移动窗口，Page Up / Page Down 切换工作区。完整配置随用户模板安装到 `~/.config/niri/config.kdl`。
-- Denial 使用自带的 Flutter 桌面和状态栏，随上游签名的 aarch64 软件源更新。Droidloom 建议等平板的 GPU 加速、Android 输入和休眠通过真机测试后按需安装。
+- `kde` 安装 Plasma Desktop。`plasma-mobile` 从同一个 Arch Linux ARM 软件源安装触屏 shell 和屏幕键盘，登录时预选 Plasma Mobile。两者各自构建镜像，共用 KWin、Plasma Workspace 和设备软件包。
+- `denial` 使用 Denial 自带的 Flutter 桌面和状态栏。`denial-mobile` 使用同一个 aarch64 软件包，默认启用移动 shell、状态栏和屏幕键盘。两种模式都通过上游签名软件源更新。Droidloom 可按需安装。
 - 如果使用长期设备软件仓库并发布 Niri 镜像，请用 Niri 构建的仓库产物，以便仓库同时包含 `noctalia`。
 
 ## 构建缓存

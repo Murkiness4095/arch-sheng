@@ -6,7 +6,7 @@ on:
       profile:
         description: Desktop profile
         type: choice
-        options: [tty, gnome, kde, niri, denial]
+        options: [tty, gnome, kde, plasma-mobile, niri, denial, denial-mobile]
         default: tty
       include_firmware:
         description: Include the device firmware overlay in the image
