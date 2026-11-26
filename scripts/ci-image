@@ -76,7 +76,7 @@ case "$profile" in
     display_manager=sddm.service
     ;;
   niri)
-    desktop=(niri sheng/noctalia foot xdg-desktop-portal-gnome xwayland-satellite sddm)
+    desktop=(niri sheng/noctalia foot fuzzel xdg-desktop-portal-gnome xwayland-satellite sddm)
     display_manager=sddm.service
     install -Dm644 profiles/niri/config.kdl "$target/etc/skel/.config/niri/config.kdl"
     ;;
@@ -96,7 +96,29 @@ case "$profile" in
   *) echo "Unknown desktop profile: $profile" >&2; exit 1 ;;
 esac
 if [[ -n $display_manager ]]; then
-  desktop+=(noto-fonts pipewire-pulse wireplumber xdg-desktop-portal-gtk)
+  desktop+=(noto-fonts noto-fonts-cjk pipewire-pulse wireplumber xdg-desktop-portal-gtk
+    fcitx5 fcitx5-rime fcitx5-gtk fcitx5-qt fcitx5-configtool rime-luna-pinyin)
+  skel=$target/etc/skel/.config
+  install -Dm644 profiles/common/fcitx5-profile "$skel/fcitx5/profile"
+  install -d "$target/etc/environment.d"
+  ime_environment=$target/etc/environment.d/70-sheng-input-method.conf
+  printf 'XMODIFIERS=@im=fcitx\n' > "$ime_environment"
+  if [[ $profile == kde ]]; then
+    # KWin owns the input-method process for native Plasma Wayland clients.
+    printf '[Wayland]\nInputMethod=/usr/share/applications/org.fcitx.Fcitx5.desktop\n' > "$skel/kwinrc"
+    install -d "$skel/autostart"
+    printf '[Desktop Entry]\nHidden=true\n' > "$skel/autostart/org.fcitx.Fcitx5.desktop"
+  else
+    install -Dm644 profiles/common/fcitx5-autostart.desktop "$skel/autostart/org.fcitx.Fcitx5.desktop"
+  fi
+  case "$profile" in
+    gnome|niri)
+      printf 'QT_IM_MODULES="wayland;fcitx"\n' >> "$ime_environment"
+      ;;
+    denial)
+      printf 'GTK_IM_MODULE=fcitx\nQT_IM_MODULE=fcitx\n' >> "$ime_environment"
+      ;;
+  esac
 fi
 
 if [[ ${SHENG_WITH_FIRMWARE:-false} == true ]]; then
